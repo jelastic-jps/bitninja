@@ -1,9 +1,9 @@
 type: update
 name: BitNinja Service
-logo: main/images/logo.png
+logo: images/logo.png
 homepage: https://bitninja.io/
 
-baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja
+baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja/master
 
 buttons:
   - caption: BitNinja admin panel
