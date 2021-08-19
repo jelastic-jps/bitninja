@@ -1,0 +1,96 @@
+type: update
+name: BitNinja Service
+logo: main/images/logo.png
+homepage: https://bitninja.io/
+
+baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja
+
+buttons:
+  - caption: BitNinja admin panel
+    href: https://admin.bitninja.io/site/login
+
+targetNodes:
+  nodeType:
+    - tomcat6
+    - tomcat7
+    - tomcat8
+    - tomcat85
+    - tomcat9
+    - tomcat
+    - tomee
+    - tomee-dockerized
+    - glassfish3
+    - glassfish4
+    - glassfish
+    - jetty
+    - jetty6
+    - apache
+    - apache2
+    - nginxphp
+    - apache2-ruby
+    - nginx-ruby
+    - nginx
+    - nginx-dockerized
+    - nginxphp-dockerized
+    - haproxy
+    - apache-lb
+    - varnish
+    - varnish-dockerized
+    - payara
+    - wildfly
+    - nodejs
+    - apache-ruby
+    - apache-python
+    - nginxruby
+    - litespeedphp
+    - litespeedadc
+    - lemp
+    - llsmp
+    - jenkins
+    - jenkins2
+
+onAfterStart: updateLicense
+onBeforeStop: deleteLicense
+
+onAfterClone:
+  - script: return {result:0, jps:MANIFEST};
+  - install: ${response.jps}
+    envName: ${event.response.env.envName}
+    nodeGroup: ${targetNodes.nodeGroup}
+    settings: ${settings}
+
+onAfterServiceScaleOut:
+  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+    - if (${nodes.cp.length:0}): updateLicense
+    - if (!${nodes.cp.length:0}): deleteLicense
+
+onAfterScaleIn:
+  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+    - if (${nodes.cp.length:0}): updateLicense
+    - if (!${nodes.cp.length:0}): deleteLicense
+
+onBeforeDelete:
+  updateLicense: uninstall
+
+onUninstall:
+  updateLicense: uninstall
+
+onInstall: updateLicense
+
+actions:
+  deleteLicense:
+    updateLicense: uninstall
+
+  updateLicense:
+    - script: |
+        var params = {
+          nodeGroup: "${targetNodes.nodeGroup}",
+          envName: "${env.name}",
+          action: "${this:}"
+        };
+        var resp = jelastic.dev.scripting.Eval("${globals.appid}", session, "bitninja.license", params);
+        return resp.response ? resp.response:resp;
+    - forEach(license:response.licenses):
+        cmd: ${@license.cmd}
+        nodeId: ${@license.id}
+        user: root
