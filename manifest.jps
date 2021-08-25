@@ -49,7 +49,7 @@ targetNodes:
     - jenkins
     - jenkins2
 
-onAfterStart: updateLicense
+onAfterStart: manageLicense
 onBeforeStop: deleteLicense
 
 onAfterClone:
@@ -61,36 +61,49 @@ onAfterClone:
 
 onAfterServiceScaleOut:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    - if (${nodes.cp.length:0}): updateLicense
+    - if (${nodes.cp.length:0}): manageLicense
     - if (!${nodes.cp.length:0}): deleteLicense
 
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    - if (${nodes.cp.length:0}): updateLicense
+    - if (${nodes.cp.length:0}): manageLicense
     - if (!${nodes.cp.length:0}): deleteLicense
 
 onBeforeDelete:
-  updateLicense: uninstall
+  manageLicense: uninstall
 
 onUninstall:
-  updateLicense: uninstall
+  manageLicense: uninstall
 
-onInstall: updateLicense
+onInstall: manageLicense
 
 actions:
   deleteLicense:
-    updateLicense: uninstall
+    manageLicense: uninstall
 
-  updateLicense:
+  manageLicense:
     - script: |
         var params = {
           nodeGroup: "${targetNodes.nodeGroup}",
           envName: "${env.name}",
           action: "${this:}"
         };
-        var resp = jelastic.dev.scripting.Eval("${globals.appid}", session, "bitninja.license", params);
+        var resp = jelastic.dev.scripting.Eval("a498b13745283f7f3dbab7a31ed7d348", session, "license", params);
         return resp.response ? resp.response:resp;
     - forEach(license:response.licenses):
-        cmd: ${@license.cmd}
-        nodeId: ${@license.id}
-        user: root
+        if ('${@license.action}' == 'uninstall'):
+          uninstallAgent: ${@license.id}
+        else:
+          installAgent:
+            licenseKey: ${@license.licenseKey}
+            id: ${@license.id}
+
+  uninstallAgent:
+    cmd: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja-ssl-termination; rm -Rf /var/log/bitninja
+    nodeId: ${@this}
+    user: root
+
+  installAgent:
+    cmd: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key=${this.licenseKey} -y
+    nodeId: ${this.id}
+    user: root
