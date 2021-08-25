@@ -1,4 +1,5 @@
 type: update
+version: 6.0.1
 name: BitNinja Service
 logo: images/logo.png
 homepage: https://bitninja.io/
@@ -49,7 +50,7 @@ targetNodes:
     - jenkins
     - jenkins2
 
-onAfterStart: manageLicense
+onAfterStart: setupBitninjaAgent
 onBeforeStop: deleteLicense
 
 onAfterClone:
@@ -61,23 +62,33 @@ onAfterClone:
 
 onAfterServiceScaleOut:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    - if (${nodes.cp.length:0}): manageLicense
-    - if (!${nodes.cp.length:0}): deleteLicense
+    - if (${targetNodes.nodeGroup.length:0}): deleteLicense
+    - if (!${targetNodes.nodeGroup.length:0}): setupBitninjaAgent
 
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    - if (${nodes.cp.length:0}): manageLicense
-    - if (!${nodes.cp.length:0}): deleteLicense
+    - if (${targetNodes.nodeGroup.length:0}): deleteLicense
+    - if (!${targetNodes.nodeGroup.length:0}): manageLicense
 
-onBeforeDelete:
-  manageLicense: uninstall
+onBeforeDelete: uninstallBitninjaAgent
 
-onUninstall:
-  manageLicense: uninstall
+onUninstall: uninstallBitninjaAgent
 
-onInstall: manageLicense
+onInstall: setupBitninjaAgent
 
 actions:
+  setupBitninjaAgent:
+    - manageLicense
+    - forEach(license:response.licenses):
+        installAgent:
+          licenseKey: ${@license.licenseKey}
+          id: ${@license.id}
+
+  uninstallBitninjaAgent:
+    - manageLicense: uninstall
+    - forEach(license:response.licenses):
+        uninstallAgent: ${@license.id}
+
   deleteLicense:
     manageLicense: uninstall
 
@@ -90,20 +101,11 @@ actions:
         };
         var resp = jelastic.dev.scripting.Eval("a498b13745283f7f3dbab7a31ed7d348", session, "license", params);
         return resp.response ? resp.response:resp;
-    - forEach(license:response.licenses):
-        if ('${@license.action}' == 'uninstall'):
-          uninstallAgent: ${@license.id}
-        else:
-          installAgent:
-            licenseKey: ${@license.licenseKey}
-            id: ${@license.id}
 
   uninstallAgent:
-    cmd: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja-ssl-termination; rm -Rf /var/log/bitninja
-    nodeId: ${@this}
+    cmd [${this}]: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja-ssl-termination; rm -Rf /var/log/bitninja
     user: root
 
   installAgent:
-    cmd: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key=${this.licenseKey} -y
-    nodeId: ${this.id}
+    cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y
     user: root
