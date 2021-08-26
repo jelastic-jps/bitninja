@@ -50,8 +50,8 @@ targetNodes:
     - jenkins
     - jenkins2
 
-onAfterStart: setupBitninjaAgent
-onBeforeStop: deleteLicense
+onAfterStart: updateLicenses
+onBeforeStop: deleteLicenses
 
 onAfterClone:
   - script: return {result:0, jps:MANIFEST};
@@ -62,37 +62,43 @@ onAfterClone:
 
 onAfterServiceScaleOut:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    - if (${targetNodes.nodeGroup.length:0}): deleteLicense
-    - if (!${targetNodes.nodeGroup.length:0}): setupBitninjaAgent
+    - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
+    - if (!${targetNodes.nodeGroup.length:0}): setupBitninja
 
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    - if (${targetNodes.nodeGroup.length:0}): deleteLicense
-    - if (!${targetNodes.nodeGroup.length:0}): manageLicense
+    - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
+    - if (!${targetNodes.nodeGroup.length:0}): manageLicenses
 
-onBeforeDelete: uninstallBitninjaAgent
+onBeforeDelete: uninstallBitninja
 
-onUninstall: uninstallBitninjaAgent
+onUninstall: uninstallBitninja
 
-onInstall: setupBitninjaAgent
+onInstall: setupBitninja
 
 actions:
-  setupBitninjaAgent:
-    - manageLicense
+  setupBitninja:
+    - manageLicenses
     - forEach(license:response.licenses):
         installAgent:
           licenseKey: ${@license.licenseKey}
           id: ${@license.id}
 
-  uninstallBitninjaAgent:
-    - manageLicense: uninstall
+  uninstallBitninja:
+    - manageLicenses: uninstall
     - forEach(license:response.licenses):
         uninstallAgent: ${@license.id}
 
-  deleteLicense:
-    manageLicense: uninstall
+  updateLicenses:
+    - manageLicenses
+    - forEach(license:response.licenses):
+        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}'&& /etc/init.d/bitninja restart
+        user: root
 
-  manageLicense:
+  deleteLicenses:
+    manageLicenses: uninstall
+
+  manageLicenses:
     - script: |
         var params = {
           nodeGroup: "${targetNodes.nodeGroup}",
