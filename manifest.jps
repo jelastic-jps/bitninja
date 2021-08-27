@@ -6,6 +6,9 @@ homepage: https://bitninja.io/
 
 baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja/master
 
+description:
+  short: BitNinja All-in-One Server Protection
+
 buttons:
   - caption: BitNinja admin panel
     href: https://admin.bitninja.io/site/login
