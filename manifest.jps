@@ -7,14 +7,17 @@ homepage: https://bitninja.io/
 baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja/master
 
 onBeforeInit: |
-  var resp = jelastic.dev.scripting.Eval("a498b13745283f7f3dbab7a31ed7d348", session, "wizard.ui");            
+  var resp = jelastic.dev.scripting.Eval("a498b13745283f7f3dbab7a31ed7d348", session, "wizard.ui", {
+    groupType: "${account.groupType:}",
+    uid: "${user.uid}"
+  });
   return resp.response ? resp.response:resp;
 
 description:
   short: BitNinja All-in-One Server Protection
 
 buttons:
-  - caption: BitNinja admin panel
+  - caption: BitNinja Admin Panel
     href: https://admin.bitninja.io/site/login
 
 targetNodes:
@@ -56,6 +59,7 @@ targetNodes:
     - llsmp
     - jenkins
     - jenkins2
+    - kubernetes
 
 onAfterStart: updateLicenses
 onBeforeStop: deleteLicenses
