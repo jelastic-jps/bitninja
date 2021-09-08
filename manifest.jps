@@ -136,6 +136,7 @@ actions:
     
   removeLogs:
     cmd [${this}]: rm -Rf /var/log/bitninja*;
+    user: root
 
   installAgent:
     cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y
