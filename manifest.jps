@@ -74,7 +74,7 @@ onAfterClone:
 onAfterServiceScaleOut:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
-    - if (!${targetNodes.nodeGroup.length:0}): setupBitninja
+    - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
 
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -94,6 +94,17 @@ actions:
         installAgent:
           licenseKey: ${@license.licenseKey}
           id: ${@license.id}
+  
+  reinstallBitNinja: 
+    - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
+      user: root
+    - manageLicenses
+    - forEach(license:response.licenses):
+        - uninstallAgent: ${@license.id}
+        - removeLogs: ${@license.id}
+        - installAgent:
+            licenseKey: ${@license.licenseKey}
+            id: ${@license.id}
 
   uninstallBitninja:
     - manageLicenses: uninstall
@@ -120,8 +131,11 @@ actions:
         return resp.response ? resp.response:resp;
 
   uninstallAgent:
-    cmd [${this}]: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja-ssl-termination; rm -Rf /var/log/bitninja
+    cmd [${this}]: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja*; rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
     user: root
+    
+  removeLogs:
+    cmd [${this}]: rm -Rf /var/log/bitninja*;
 
   installAgent:
     cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y
