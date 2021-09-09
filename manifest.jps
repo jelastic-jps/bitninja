@@ -60,9 +60,16 @@ targetNodes:
     - jenkins
     - jenkins2
     - kubernetes
+    
+globals:
+  action: /etc/bitninja/jelastic_action
 
 onAfterStart: updateLicenses
 onBeforeStop: deleteLicenses
+
+onBeforeClone:
+  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action}
+  user: root
 
 onAfterClone:
   - script: return {result:0, jps:MANIFEST};
@@ -71,8 +78,12 @@ onAfterClone:
     nodeGroup: ${targetNodes.nodeGroup}
     settings: ${settings}
 
+onBeforeServiceScaleOut:
+  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action}
+  user: root
+
 onAfterServiceScaleOut:
-  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+  - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
 
@@ -94,6 +105,8 @@ actions:
         installAgent:
           licenseKey: ${@license.licenseKey}
           id: ${@license.id}
+    - enableInitScript
+    - disableBitNinjaAutoLoad
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -140,4 +153,15 @@ actions:
 
   installAgent:
     cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y
+    user: root
+
+  enableInitScript:
+    cmd [cp]: |-
+      curl  -fsSL "https://raw.githubusercontent.com/lazarenkoalexey/bitninja/main/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
+      chmod +x /etc/rc.d/init.d/jelastic-bitninja
+      chkconfig --add jelastic-bitninja
+    user: root
+    
+  disableBitNinjaAutoLoad:
+    cmd [cp]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
     user: root
