@@ -4,7 +4,7 @@ name: BitNinja Service
 logo: images/logo.png
 homepage: https://bitninja.io/
 
-baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja/master
+baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja/main
 
 onBeforeInit: |
   var resp = jelastic.dev.scripting.Eval("a498b13745283f7f3dbab7a31ed7d348", session, "wizard.ui", {
@@ -157,7 +157,7 @@ actions:
 
   enableInitScript:
     cmd [cp]: |-
-      curl  -fsSL "https://raw.githubusercontent.com/lazarenkoalexey/bitninja/main/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
+      curl  -fsSL "${baseUrl}/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
       chmod +x /etc/rc.d/init.d/jelastic-bitninja
       chkconfig --add jelastic-bitninja
     user: root
