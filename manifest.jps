@@ -90,7 +90,8 @@ onAfterServiceScaleOut:
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
-    - if (!${targetNodes.nodeGroup.length:0}): manageLicenses
+    - if (!${targetNodes.nodeGroup.length:0}):
+      manageLicenses: scale
 
 onBeforeDelete: uninstallBitninja
 
