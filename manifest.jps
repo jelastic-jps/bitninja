@@ -156,12 +156,12 @@ actions:
     user: root
 
   enableInitScript:
-    cmd [cp]: |-
+    cmd [${targetNodes.nodeGroup}]: |-
       curl  -fsSL "${baseUrl}/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
       chmod +x /etc/rc.d/init.d/jelastic-bitninja
       chkconfig --add jelastic-bitninja
     user: root
     
   disableBitNinjaAutoLoad:
-    cmd [cp]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
+    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
     user: root
