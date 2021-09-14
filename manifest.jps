@@ -109,6 +109,7 @@ actions:
     - enableInitScript
     - disableBitNinjaAutoLoad
     - addFavoriteDir
+    - addLogVisible
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -182,3 +183,7 @@ actions:
     env.file.RemoveFavorite:
       nodeGroup: ${targetNodes.nodeGroup}
       path: /etc/bitninja
+      
+  addLogVisible:
+    cmd [${targetNodes.nodeGroup}]: curl -fsSL "${baseUrl}/scripts/enableLogsVisibility.sh" -o /tmp/enableLogsVisibility.sh; bash /tmp/enableLogsVisibility.sh "${targetNodes.nodeType}"
+    user: root
