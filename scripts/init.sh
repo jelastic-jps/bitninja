@@ -2,20 +2,18 @@
 #
 #       /etc/rc.d/init.d/bitninja
 #
-#       BitNinja Server Security
+#       Jelastic control script
 #       Start/Stop script
 #
 ### BEGIN INIT INFO
-# Provides: $bitninja
+# Provides: $jelastic
 # Required-Start: $local_fs $network $iptables
 # Should-Start: $netconsole apache2 nginx lighttpd mysql
 # Required-Stop:
 # Default-Start:  2 3 4 5
 # Default-Stop: 0 1 6
-# Short-Description: BitNinja Server Security daemon (BitNinja.IO)
-# Description: BitNinja is an easy to install, easy to use integrated
-#              server security softwar. It can protect your server against
-#              many kind of threats and attacks.
+# Short-Description: Jelastic BitNinja scale and clone control script.
+# Description: Control script to manage node actions behaviour - scaling and clone.
 ### END INIT INFO
 
 JELASTIC_ACTION="/etc/bitninja/jelastic_action"
