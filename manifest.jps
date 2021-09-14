@@ -4,7 +4,7 @@ name: BitNinja Service
 logo: images/logo.png
 homepage: https://bitninja.io/
 
-baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja/master
+baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja/main
 
 onBeforeInit: |
   var resp = jelastic.dev.scripting.Eval("a498b13745283f7f3dbab7a31ed7d348", session, "wizard.ui", {
@@ -60,9 +60,16 @@ targetNodes:
     - jenkins
     - jenkins2
     - kubernetes
+    
+globals:
+  action: /etc/bitninja/jelastic_action
 
 onAfterStart: updateLicenses
 onBeforeStop: deleteLicenses
+
+onBeforeClone:
+  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action}
+  user: root
 
 onAfterClone:
   - script: return {result:0, jps:MANIFEST};
@@ -71,15 +78,20 @@ onAfterClone:
     nodeGroup: ${targetNodes.nodeGroup}
     settings: ${settings}
 
+onBeforeServiceScaleOut:
+  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action}
+  user: root
+
 onAfterServiceScaleOut:
-  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+  - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
 
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
-    - if (!${targetNodes.nodeGroup.length:0}): manageLicenses
+    - if (!${targetNodes.nodeGroup.length:0}):
+        manageLicenses: scale
 
 onBeforeDelete: uninstallBitninja
 
@@ -94,6 +106,9 @@ actions:
         installAgent:
           licenseKey: ${@license.licenseKey}
           id: ${@license.id}
+    - enableInitScript
+    - disableBitNinjaAutoLoad
+    - addFavoriteDir
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -110,6 +125,7 @@ actions:
     - manageLicenses: uninstall
     - forEach(license:response.licenses):
         uninstallAgent: ${@license.id}
+    - removeFavoriteDir
 
   updateLicenses:
     - manageLicenses
@@ -141,3 +157,28 @@ actions:
   installAgent:
     cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y
     user: root
+
+  enableInitScript:
+    cmd [${targetNodes.nodeGroup}]: |-
+      curl  -fsSL "${baseUrl}/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
+      chmod +x /etc/rc.d/init.d/jelastic-bitninja
+      chkconfig --add jelastic-bitninja
+    user: root
+    
+  disableBitNinjaAutoLoad:
+    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
+    user: root
+  
+  addFavoriteDir:
+    - cmd [${targetNodes.nodeGroup}]: chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
+      user: root
+    - env.file.AddFavorite:
+        nodeGroup: ${targetNodes.nodeGroup}
+        path: /etc/bitninja
+        keyword: BitNinja
+        isDir: true
+      
+  removeFavoriteDir:
+    env.file.RemoveFavorite:
+      nodeGroup: ${targetNodes.nodeGroup}
+      path: /etc/bitninja
