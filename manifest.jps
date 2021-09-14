@@ -108,6 +108,7 @@ actions:
           id: ${@license.id}
     - enableInitScript
     - disableBitNinjaAutoLoad
+    - addFavoriteDir
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -124,6 +125,7 @@ actions:
     - manageLicenses: uninstall
     - forEach(license:response.licenses):
         uninstallAgent: ${@license.id}
+    - removeFavoriteDir
 
   updateLicenses:
     - manageLicenses
@@ -166,3 +168,17 @@ actions:
   disableBitNinjaAutoLoad:
     cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
     user: root
+  
+  addFavoriteDir:
+    - cmd [${targetNodes.nodeGroup}]: chmod -R 644 /etc/bitninja/* && chmod 755 /etc/bitninja
+      user: root
+    - env.file.AddFavorite:
+        nodeGroup: ${targetNodes.nodeGroup}
+        path: /etc/bitninja
+        keyword: BitNinja
+        isDir: true
+      
+  removeFavoriteDir:
+    env.file.RemoveFavorite:
+      nodeGroup: ${targetNodes.nodeGroup}
+      path: /etc/bitninja
