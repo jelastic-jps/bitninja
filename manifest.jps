@@ -150,8 +150,7 @@ actions:
   updateLicenses:
     - manageLicenses
     - forEach(license:response.licenses):
-        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}'&&
-          /etc/init.d/bitninja restart
+        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}' && /etc/init.d/bitninja restart
         user: root
 
   deleteLicenses:
@@ -168,8 +167,7 @@ actions:
         return resp.response ? resp.response:resp;
 
   uninstallAgent:
-    cmd [${this}]: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja*;
-      rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
+    cmd [${this}]: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja*; rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
     user: root
 
   removeLogs:
@@ -177,8 +175,7 @@ actions:
     user: root
 
   installAgent:
-    cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}'
-      -y
+    cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y
     user: root
 
   enableInitScript:
@@ -189,8 +186,7 @@ actions:
     user: root
 
   disableBitNinjaAutoLoad:
-    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) &&
-      chkconfig --del bitninja
+    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
     user: root
 
   addFavoriteDir:
