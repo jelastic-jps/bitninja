@@ -204,14 +204,26 @@ actions:
       path: /etc/bitninja
 
   checkExtIPs:
-    - if (${targetNodes.extips.length:false}):
-        configureWAF:
-          type: 'inet '
-          nodeid: ${this.nodeid}
-    - elif (${targetNodes.extipsv6.length:false}):
-        configureWAF:
-          type: inet6
-          nodeid: ${this.nodeid}
+    - if ('${this.nodeid:}'):
+      - if (${targetNodes.extips.length:false}):
+          configureWAF:
+            type: 'inet '
+            nodeid: ${this.nodeid:}
+      - elif (${targetNodes.extipsv6.length:false}):
+          configureWAF:
+            type: inet6
+            nodeid: ${this.nodeid:}
+    - else:
+        forEach(node:env.nodes):
+          if ('${@node.nodeGroup}' == '${targetNodes.nodeGroup}'):
+            - if (${@node.extips.length:false}):
+                configureWAF:
+                  type: 'inet '
+                  nodeid: ${@node.id:}
+            - elif (${@node.extipsv6.length:false}):
+                configureWAF:
+                  type: inet6
+                  nodeid: ${@node.id:}
 
   configureWAF:
     cmd [${this.nodeid}]: |-
