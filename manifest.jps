@@ -63,6 +63,7 @@ targetNodes:
     
 globals:
   action: /etc/bitninja/jelastic_action
+  WAFConfig: /etc/bitninja/WAFManager/config.ini
 
 onAfterStart: updateLicenses
 onBeforeStop: deleteLicenses
@@ -92,6 +93,12 @@ onAfterScaleIn:
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}):
         manageLicenses: scale
+        
+onAfterAttachExtIp:
+  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'): checkExtIPs
+  
+onAfterDetachExtIp:
+  if (${targetNodes.extips.length:false} == false && ${targetNodes.extipsv6.length:false} == false): disableWAF
 
 onBeforeDelete: uninstallBitninja
 
@@ -109,6 +116,7 @@ actions:
     - enableInitScript
     - disableBitNinjaAutoLoad
     - addFavoriteDir
+    - checkExtIPs
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -182,3 +190,25 @@ actions:
     env.file.RemoveFavorite:
       nodeGroup: ${targetNodes.nodeGroup}
       path: /etc/bitninja
+  
+  checkExtIPs:
+    - if (${targetNodes.extips.length:false}):
+        configureWAF: 'inet '
+    - elif (${targetNodes.extipsv6.length:false}):
+        configureWAF: inet6
+  
+  configureWAF:
+    cmd [${targetNodes.nodeGroup}]: |-
+      grep -qR '^interface'  ${globals.WAFConfig} && exit 0
+      sed -i 's|^interface.*||g' ${globals.WAFConfig}
+      device=$(ip -o addr show scope global | grep ${this} | awk '{print $2}' | head -1)
+      sed -i "s|.*redirection_mode = 'transparent'|redirection_mode = 'transparent'\ninterface[]='${device}'|g" ${globals.WAFConfig}
+      service bitninja restart
+    user: root
+    
+  disableWAF:
+    cmd [${targetNodes.nodeGroup}]: |-
+      sed -i "s|^redirection_mode.*|;redirection_mode = 'transparent'|g" ${globals.WAFConfig}
+      sed -i "s|^interface.*||g" ${globals.WAFConfig}
+      service bitninja restart
+    user: root
