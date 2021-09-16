@@ -60,12 +60,13 @@ targetNodes:
     - jenkins
     - jenkins2
     - kubernetes
-    
+
 globals:
   action: /etc/bitninja/jelastic_action
   WAFConfig: /etc/bitninja/WAFManager/config.ini
 
 onAfterStart: updateLicenses
+
 onBeforeStop: deleteLicenses
 
 onBeforeClone:
@@ -93,12 +94,23 @@ onAfterScaleIn:
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}):
         manageLicenses: scale
-        
-onAfterAttachExtIp:
-  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'): checkExtIPs
-  
-onAfterDetachExtIp:
-  if (${targetNodes.extips.length:false} == false && ${targetNodes.extipsv6.length:false} == false): disableWAF
+
+onAfterSetExtIpCount:
+  - if (${event.response.result:1} == 0):
+    - env.control.GetNodeInfo[${event.params.nodeid}]:
+    - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
+        if ('${response.node.extips:false}' == 'false' && '${response.node.extipsv6:false}' == 'false'):
+          disableWAF:
+            nodeid: "${response.node.id}"
+        else:
+          checkExtIPs:
+            nodeid: "${response.node.id}"
+
+onBeforeDetachExtIp:
+  - env.control.GetNodeInfo[${event.params.nodeid}]
+  - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
+      disableWAF:
+        nodeid: ${response.node.id}
 
 onBeforeDelete: uninstallBitninja
 
@@ -117,8 +129,8 @@ actions:
     - disableBitNinjaAutoLoad
     - addFavoriteDir
     - checkExtIPs
-  
-  reinstallBitNinja: 
+
+  reinstallBitNinja:
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
       user: root
     - manageLicenses
@@ -138,7 +150,8 @@ actions:
   updateLicenses:
     - manageLicenses
     - forEach(license:response.licenses):
-        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}'&& /etc/init.d/bitninja restart
+        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}'&&
+          /etc/init.d/bitninja restart
         user: root
 
   deleteLicenses:
@@ -155,15 +168,17 @@ actions:
         return resp.response ? resp.response:resp;
 
   uninstallAgent:
-    cmd [${this}]: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja*; rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
+    cmd [${this}]: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja*;
+      rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
     user: root
-    
+
   removeLogs:
     cmd [${this}]: rm -Rf /var/log/bitninja*;
     user: root
 
   installAgent:
-    cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y
+    cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}'
+      -y
     user: root
 
   enableInitScript:
@@ -172,11 +187,12 @@ actions:
       chmod +x /etc/rc.d/init.d/jelastic-bitninja
       chkconfig --add jelastic-bitninja
     user: root
-    
+
   disableBitNinjaAutoLoad:
-    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
+    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) &&
+      chkconfig --del bitninja
     user: root
-  
+
   addFavoriteDir:
     - cmd [${targetNodes.nodeGroup}]: chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
       user: root
@@ -185,29 +201,33 @@ actions:
         path: /etc/bitninja
         keyword: BitNinja
         isDir: true
-      
+
   removeFavoriteDir:
     env.file.RemoveFavorite:
       nodeGroup: ${targetNodes.nodeGroup}
       path: /etc/bitninja
-  
+
   checkExtIPs:
     - if (${targetNodes.extips.length:false}):
-        configureWAF: 'inet '
+        configureWAF:
+          type: 'inet '
+          nodeid: ${this.nodeid}
     - elif (${targetNodes.extipsv6.length:false}):
-        configureWAF: inet6
-  
+        configureWAF:
+          type: inet6
+          nodeid: ${this.nodeid}
+
   configureWAF:
-    cmd [${targetNodes.nodeGroup}]: |-
+    cmd [${this.nodeid}]: |-
       grep -qR '^interface'  ${globals.WAFConfig} && exit 0
       sed -i 's|^interface.*||g' ${globals.WAFConfig}
-      device=$(ip -o addr show scope global | grep ${this} | awk '{print $2}' | head -1)
+      device=$(ip -o addr show scope global | grep ${this.type} | awk '{print $2}' | head -1)
       sed -i "s|.*redirection_mode = 'transparent'|redirection_mode = 'transparent'\ninterface[]='${device}'|g" ${globals.WAFConfig}
       service bitninja restart
     user: root
-    
+
   disableWAF:
-    cmd [${targetNodes.nodeGroup}]: |-
+    cmd [${this.nodeid}]: |-
       sed -i "s|^redirection_mode.*|;redirection_mode = 'transparent'|g" ${globals.WAFConfig}
       sed -i "s|^interface.*||g" ${globals.WAFConfig}
       service bitninja restart
