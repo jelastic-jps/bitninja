@@ -1,7 +1,7 @@
 #/bin/bash
 
 nodeType=$1;
-pathLog="/var/log/";
+pathLog="";
 
 case "$1" in
 "apache" ) pathLog="/var/log/httpd";;
@@ -12,5 +12,7 @@ case "$1" in
 "varnish" ) pathLog="/var/log/varnish";;
 esac
 
-ln -s /var/log/bitninja ${pathLog}
-ln -s /var/log/bitninja-ssl-termination ${pathLog}
+[[ ! -z ${pathLog} ]] && {
+  ln -s /var/log/bitninja ${pathLog}
+  ln -s /var/log/bitninja-ssl-termination ${pathLog}
+}
