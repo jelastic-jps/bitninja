@@ -95,16 +95,9 @@ onAfterScaleIn:
     - if (!${targetNodes.nodeGroup.length:0}):
         manageLicenses: scale
 
-onAfterSetExtIpCount:
-  - if (${event.response.result:1} == 0):
-    - env.control.GetNodeInfo[${event.params.nodeid}]:
-    - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
-        if ('${response.node.extips:false}' == 'false' && '${response.node.extipsv6:false}' == 'false'):
-          disableWAF:
-            nodeid: "${response.node.id}"
-        else:
-          checkExtIPs:
-            nodeid: "${response.node.id}"
+onAfterSetExtIpCount: manageWAFModule
+
+onAfterAttachExtIp: manageWAFModule
 
 onBeforeDetachExtIp:
   - env.control.GetNodeInfo[${event.params.nodeid}]
@@ -224,6 +217,17 @@ actions:
                 configureWAF:
                   type: inet6
                   nodeid: ${@node.id:}
+
+  manageWAFModule:
+    - if (${event.response.result:1} == 0):
+      - env.control.GetNodeInfo[${event.params.nodeid}]:
+      - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
+          if ('${response.node.extips:false}' == 'false' && '${response.node.extipsv6:false}' == 'false'):
+            disableWAF:
+              nodeid: "${response.node.id}"
+          else:
+            checkExtIPs:
+              nodeid: "${response.node.id}"
 
   configureWAF:
     cmd [${this.nodeid}]: |-
