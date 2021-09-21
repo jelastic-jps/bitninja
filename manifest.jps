@@ -194,7 +194,7 @@ actions:
       path: /etc/bitninja
       
   addRedeployConfDir:
-    cmd [${targetNodes.nodeGroup}]: echo "/etc/bitninja" >> /etc/jelastic/redeploy.conf
+    cmd [${targetNodes.nodeGroup}]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
     user: root
     
   removeRedeployConfDir:
