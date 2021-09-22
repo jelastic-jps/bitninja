@@ -68,7 +68,7 @@ onAfterStart: updateLicenses
 onBeforeStop: deleteLicenses
 
 onBeforeClone:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action}
+  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action} || echo 'directory is missing'
   user: root
 
 onAfterClone:
@@ -77,9 +77,17 @@ onAfterClone:
     envName: ${event.response.env.envName}
     nodeGroup: ${targetNodes.nodeGroup}
     settings: ${settings}
+    
+onAfterRedeployContainer:
+  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+    cmd [${targetNodes.nodeGroup}]: |-
+      rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm
+      yum -y install bitninja
+      service bitninja restart
+    user: root
 
 onBeforeServiceScaleOut:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action}
+  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
   user: root
 
 onAfterServiceScaleOut:
@@ -110,6 +118,7 @@ actions:
     - disableBitNinjaAutoLoad
     - addFavoriteDir
     - makeLogsVisible
+    - addRedeployConfDir
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -127,6 +136,7 @@ actions:
     - forEach(license:response.licenses):
         uninstallAgent: ${@license.id}
     - removeFavoriteDir
+    - removeRedeployConfDir
 
   updateLicenses:
     - manageLicenses
@@ -186,4 +196,11 @@ actions:
       
   makeLogsVisible:
     cmd [${targetNodes.nodeGroup}]: curl -fsSL "${baseUrl}/scripts/enableLogsVisibility.sh" -o /tmp/enableLogsVisibility.sh; bash /tmp/enableLogsVisibility.sh "${targetNodes.nodeType}"
+
+  addRedeployConfDir:
+    cmd [${targetNodes.nodeGroup}]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
+    user: root
+    
+  removeRedeployConfDir:
+    cmd [${targetNodes.nodeGroup}]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
     user: root
