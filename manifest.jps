@@ -117,6 +117,7 @@ actions:
     - enableInitScript
     - disableBitNinjaAutoLoad
     - addFavoriteDir
+    - makeLogsVisible
     - addRedeployConfDir
   
   reinstallBitNinja: 
@@ -193,6 +194,9 @@ actions:
       nodeGroup: ${targetNodes.nodeGroup}
       path: /etc/bitninja
       
+  makeLogsVisible:
+    cmd [${targetNodes.nodeGroup}]: curl -fsSL "${baseUrl}/scripts/enableLogsVisibility.sh" -o /tmp/enableLogsVisibility.sh; bash /tmp/enableLogsVisibility.sh "${targetNodes.nodeType}"
+
   addRedeployConfDir:
     cmd [${targetNodes.nodeGroup}]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
     user: root
