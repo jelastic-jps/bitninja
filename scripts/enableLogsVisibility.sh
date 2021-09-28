@@ -13,7 +13,7 @@ case "$1" in
 esac
 
 [[ ! -z ${pathLog} ]] && {
-  ln -s /var/log/bitninja ${pathLog}
-  ln -s /var/log/bitninja-ssl-termination ${pathLog}
+  [ ! -d "/var/log/bitninja" ] && ln -s /var/log/bitninja ${pathLog}
+  [ ! -d "/var/log/bitninja-ssl-termination" ] && ln -s /var/log/bitninja-ssl-termination ${pathLog}
 }
 exit 0;
