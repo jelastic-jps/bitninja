@@ -16,3 +16,4 @@ esac
   ln -s /var/log/bitninja ${pathLog}
   ln -s /var/log/bitninja-ssl-termination ${pathLog}
 }
+exit 0;
