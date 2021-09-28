@@ -254,9 +254,11 @@ actions:
       sed -i "s|^redirection_mode.*|;redirection_mode = 'transparent'|g" ${globals.WAFConfig}
       sed -i "s|^interface.*||g" ${globals.WAFConfig}
       service bitninja restart
+    user: root
       
   makeLogsVisible:
     cmd [${targetNodes.nodeGroup}]: curl -fsSL "${baseUrl}/scripts/enableLogsVisibility.sh" -o /tmp/enableLogsVisibility.sh; bash /tmp/enableLogsVisibility.sh "${targetNodes.nodeType}"
+    user: root
 
   addRedeployConfDir:
     cmd [${targetNodes.nodeGroup}]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
