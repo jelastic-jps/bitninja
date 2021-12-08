@@ -64,6 +64,7 @@ targetNodes:
 globals:
   action: /etc/bitninja/jelastic_action
   WAFConfig: /etc/bitninja/WAFManager/config.ini
+  EXTEND_PERM: /etc/jelastic/extendperm.conf
 
 onAfterStart: updateLicenses
 
@@ -171,7 +172,11 @@ actions:
         return resp.response ? resp.response:resp;
 
   uninstallAgent:
-    cmd [${this}]: service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja*; rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
+    cmd [${this}]: |-
+      service bitninja stop; yum -y remove 'bitninja*'; 
+      rm -Rf /opt/bitninja*; rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
+      sed -i "s|;/etc/bitninja||g" ${globals.EXTEND_PERM}
+      jem filemanager extendperm
     user: root
 
   removeLogs:
@@ -206,7 +211,13 @@ actions:
     user: root
 
   addFavoriteDir:
-    - cmd [${targetNodes.nodeGroup}]: chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
+    - cmd [${targetNodes.nodeGroup}]: |-
+        sed -i "s|;retain_rights = 0|retain_rights = 1|g" /etc/bitninja/System/config.ini
+        str=$(cat /etc/jelastic/extendperm.conf | awk '/./{line=$0} END{print line}')
+        grep -q "/etc/bitninja" ${globals.EXTEND_PERM} || sed -i "s|${str}|${str};/etc/bitninja|g" ${globals.EXTEND_PERM}
+        jem  filemanager extendperm
+        chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
+        service bitninja restart
       user: root
     - env.file.AddFavorite:
         nodeGroup: ${targetNodes.nodeGroup}
