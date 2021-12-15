@@ -207,7 +207,7 @@ actions:
     user: root
 
   disableBitNinjaAutoLoad:
-    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
+    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja || echo "BitNinija service is absent"
     user: root
 
   addFavoriteDir:
