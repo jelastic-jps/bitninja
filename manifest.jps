@@ -20,6 +20,11 @@ description:
 buttons:
   - caption: BitNinja Admin Panel
     href: https://admin.bitninja.io/site/login
+  - confirmText: Restart BitNinja agent?
+    loadingText: Restarting BitNinja agent...
+    action: restartBitNinja
+    caption: Restart Agent
+    successText: BitNinja agent has been restarted.
 
 targetNodes:
   nodeType:
@@ -178,6 +183,10 @@ actions:
       rm -Rf /opt/bitninja*; rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
       sed -i "s|;/etc/bitninja||g" ${globals.EXTEND_PERM}
       jem filemanager extendperm
+    user: root
+  
+  restartBitNinja:
+    cmd [${targetNodes.nodeGroup}]: service bitninja restart
     user: root
 
   removeLogs:
