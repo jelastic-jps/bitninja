@@ -1,4 +1,5 @@
 type: update
+id: bitninja
 version: 6.0.1
 name: BitNinja Service
 logo: images/logo.png
@@ -19,6 +20,11 @@ description:
 buttons:
   - caption: BitNinja Admin Panel
     href: https://admin.bitninja.io/site/login
+  - confirmText: Restart BitNinja agent?
+    loadingText: Restarting BitNinja agent...
+    action: restartBitNinja
+    caption: Restart Agent
+    successText: BitNinja agent has been restarted.
 
 targetNodes:
   nodeType:
@@ -84,12 +90,13 @@ onAfterClone:
     settings: ${settings}
     
 onAfterRedeployContainer:
-  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    cmd [${targetNodes.nodeGroup}]: |-
-      rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm
-      yum -y install bitninja
-      service bitninja restart
-    user: root
+  - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+      cmd [${targetNodes.nodeGroup}]: |-
+        rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm
+        yum -y install bitninja
+        service bitninja restart
+      user: root
+  - disableIPForwarding
 
 onBeforeServiceScaleOut:
   cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
@@ -135,6 +142,7 @@ actions:
     - checkExtIPs
     - makeLogsVisible
     - addRedeployConfDir
+    - disableIPForwarding
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -180,13 +188,29 @@ actions:
       sed -i "s|;/etc/bitninja||g" ${globals.EXTEND_PERM}
       jem filemanager extendperm
     user: root
+  
+  restartBitNinja:
+    cmd [${targetNodes.nodeGroup}]: service bitninja restart
+    user: root
 
   removeLogs:
     cmd [${this}]: rm -Rf /var/log/bitninja*;
     user: root
 
   installAgent:
-    cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y
+    cmd [${this.id}]: |-
+      issue_file="/etc/issue";
+      release_files="/etc/*-release";
+      issue_string=$(cat $release_files $issue_file 2>/dev/null);
+      grep -iq "centos\|rhel" <<< $issue_string && _OS="centos"
+      [ -z "$_OS" ] && grep -iq "redhat" <<< $issue_string && _OS="centos"
+      [ -z "$_OS" ] && grep -iq "Oracle Linux Server" <<< $issue_string && _OS="centos"
+      [ -z "$_OS" ] && grep -iq "ubuntu\|mint" <<< $issue_string && _OS="ubuntu"
+      [ -z "$_OS" ] && grep -iq "debian" <<< $issue_string && _OS="debian"
+      OS_version=$(grep -h VERSION_ID <<< "$issue_string" 2>/dev/null | sed -nre 's/.*=\"?([0-9.]*).*/\1/;p;n' | head -n 1)
+      [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -h "CentOS release" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z ]*\s([0-9.]*).*/\1/;p;n')
+      [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -hP "Ubuntu|Debian" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z\/ ]*\s([0-9.]*).*/\1/;p;n')
+      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "hostOsDistrib": "'$_OS$OS_version'", "labelVersion": "${targetNodes.version}" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
     user: root
 
   enableInitScript:
@@ -197,7 +221,7 @@ actions:
     user: root
 
   disableBitNinjaAutoLoad:
-    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
+    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja || echo "BitNinija service is absent"
     user: root
 
   addFavoriteDir:
@@ -279,4 +303,8 @@ actions:
     
   removeRedeployConfDir:
     cmd [${targetNodes.nodeGroup}]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
+    user: root
+    
+  disableIPForwarding:
+    cmd [${targetNodes.nodeGroup}]: echo 0 > /proc/sys/net/ipv4/ip_forward
     user: root
