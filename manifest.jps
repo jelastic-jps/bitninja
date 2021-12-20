@@ -196,7 +196,19 @@ actions:
     user: root
 
   installAgent:
-    cmd [${this.id}]: curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y
+    cmd [${this.id}]: |-
+      issue_file="/etc/issue";
+      release_files="/etc/*-release";
+      issue_string=$(cat $release_files $issue_file 2>/dev/null);
+      grep -iq "centos\|rhel" <<< $issue_string && _OS="centos"
+      [ -z "$_OS" ] && grep -iq "redhat" <<< $issue_string && _OS="centos"
+      [ -z "$_OS" ] && grep -iq "Oracle Linux Server" <<< $issue_string && _OS="centos"
+      [ -z "$_OS" ] && grep -iq "ubuntu\|mint" <<< $issue_string && _OS="ubuntu"
+      [ -z "$_OS" ] && grep -iq "debian" <<< $issue_string && _OS="debian"
+      OS_version=$(grep -h VERSION_ID <<< "$issue_string" 2>/dev/null | sed -nre 's/.*=\"?([0-9.]*).*/\1/;p;n' | head -n 1)
+      [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -h "CentOS release" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z ]*\s([0-9.]*).*/\1/;p;n')
+      [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -hP "Ubuntu|Debian" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z\/ ]*\s([0-9.]*).*/\1/;p;n')
+      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "hostOsDistrib": "'$_OS$OS_version'", "labelVersion": "${targetNodes.version}" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
     user: root
 
   enableInitScript:
@@ -207,7 +219,7 @@ actions:
     user: root
 
   disableBitNinjaAutoLoad:
-    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja
+    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja || echo "BitNinija service is absent"
     user: root
 
   addFavoriteDir:
