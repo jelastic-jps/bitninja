@@ -88,12 +88,13 @@ onAfterClone:
     settings: ${settings}
     
 onAfterRedeployContainer:
-  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    cmd [${targetNodes.nodeGroup}]: |-
-      rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm
-      yum -y install bitninja
-      service bitninja restart
-    user: root
+  - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+      cmd [${targetNodes.nodeGroup}]: |-
+        rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm
+        yum -y install bitninja
+        service bitninja restart
+      user: root
+  - disableIPForwarding
 
 onBeforeServiceScaleOut:
   cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
@@ -139,6 +140,7 @@ actions:
     - checkExtIPs
     - makeLogsVisible
     - addRedeployConfDir
+    - disableIPForwarding
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -287,4 +289,8 @@ actions:
     
   removeRedeployConfDir:
     cmd [${targetNodes.nodeGroup}]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
+    user: root
+    
+  disableIPForwarding:
+    cmd [${targetNodes.nodeGroup}]: echo 0 > /proc/sys/net/ipv4/ip_forward
     user: root
