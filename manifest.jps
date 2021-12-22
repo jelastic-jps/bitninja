@@ -66,6 +66,19 @@ targetNodes:
     - jenkins
     - jenkins2
     - kubernetes
+    - storage
+    - mariadb
+    - mariadb10
+    - mariadb-dockerized
+    - mysql
+    - mysql5
+    - postgresql
+    - postgres9
+    - postgres10
+    - postgres11
+    - postgres12
+    - postgres13
+    - postgres14
 
 globals:
   action: /etc/bitninja/jelastic_action
