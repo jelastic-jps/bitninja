@@ -313,8 +313,9 @@ actions:
     user: root
     
   removeRedeployConfDir:
-    cmd [${targetNodes.nodeGroup}]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
-    user: root
+    if (${env.status} == 1):
+      cmd [${targetNodes.nodeGroup}]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
+      user: root
     
   disableIPForwarding:
     cmd [${targetNodes.nodeGroup}]: echo 0 > /proc/sys/net/ipv4/ip_forward
