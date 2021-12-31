@@ -85,9 +85,11 @@ globals:
   WAFConfig: /etc/bitninja/WAFManager/config.ini
   EXTEND_PERM: /etc/jelastic/extendperm.conf
 
-onAfterStart: updateLicenses
+onAfterStart: 
+    updateLicenses: renew
 
-onBeforeStop: deleteLicenses
+onBeforeStop: 
+    deleteLicenses: terminate
 
 onBeforeClone:
   cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action} || echo 'directory is missing'
@@ -174,13 +176,13 @@ actions:
     - removeRedeployConfDir
 
   updateLicenses:
-    - manageLicenses
+    - manageLicenses: ${this:}
     - forEach(license:response.licenses):
         cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}' && /etc/init.d/bitninja restart
         user: root
 
   deleteLicenses:
-    manageLicenses: uninstall
+    manageLicenses: ${this:uninstall}
 
   manageLicenses:
     - script: |
