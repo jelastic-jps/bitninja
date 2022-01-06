@@ -119,6 +119,7 @@ onAfterServiceScaleOut:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
+    - addFavoriteDir: ${event.params.nodeGroup}
 
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -151,7 +152,7 @@ actions:
           id: ${@license.id}
     - enableInitScript
     - disableBitNinjaAutoLoad
-    - addFavoriteDir
+    - addFavoriteDir: ${targetNodes.nodeGroup}
     - checkExtIPs
     - makeLogsVisible
     - addRedeployConfDir
@@ -238,7 +239,7 @@ actions:
     user: root
 
   addFavoriteDir:
-    - cmd [${targetNodes.nodeGroup}]: |-
+    - cmd [${this}]: |-
         sed -i "s|;retain_rights = 0|retain_rights = 1|g" /etc/bitninja/System/config.ini
         str=$(cat /etc/jelastic/extendperm.conf | awk '/./{line=$0} END{print line}')
         grep -q "/etc/bitninja" ${globals.EXTEND_PERM} || sed -i "s|${str}|${str};/etc/bitninja|g" ${globals.EXTEND_PERM}
