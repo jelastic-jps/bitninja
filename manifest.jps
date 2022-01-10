@@ -1,7 +1,6 @@
 type: update
-id: bitninja
 version: 6.0.1
-name: BitNinja Service
+name: BitNinja Service----
 logo: images/logo.png
 homepage: https://bitninja.io/
 
@@ -85,61 +84,21 @@ globals:
   WAFConfig: /etc/bitninja/WAFManager/config.ini
   EXTEND_PERM: /etc/jelastic/extendperm.conf
 
-onAfterStart: 
-    updateLicenses: renew
-
-onBeforeStop: 
-    deleteLicenses: terminate
-
-onBeforeClone:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action} || echo 'directory is missing'
-  user: root
-
-onAfterClone:
-  - script: return {result:0, jps:MANIFEST};
-  - install: ${response.jps}
-    envName: ${event.response.env.envName}
-    nodeGroup: ${targetNodes.nodeGroup}
-    settings: ${settings}
-    
-onAfterRedeployContainer:
-  - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-      cmd [${targetNodes.nodeGroup}]: |-
-        rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm
-        yum -y install bitninja
-        service bitninja restart
-      user: root
-  - disableIPForwarding
-
-onBeforeServiceScaleOut:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
-  user: root
-
 onAfterServiceScaleOut:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
-    - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
-    - addFavoriteDir: ${event.params.nodeGroup}
     - forEach(node:event.response.nodes):
         manageWAFModule:
           nodeid: ${@node.id}
-          result: 0
-
-onAfterScaleIn:
-  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
-    - if (!${targetNodes.nodeGroup.length:0}):
-        manageLicenses: scale
 
 onAfterSetExtIpCount:
-  manageWAFModule:
-    result: ${event.response.result}
-    nodeid: ${event.params.nodeid}
+  if (${event.response.result:1} == 0):
+    manageWAFModule:
+      nodeid: ${event.params.nodeid}
 
 onAfterAttachExtIp:
-  manageWAFModule:
-    result: ${event.response.result}
-    nodeid: ${event.params.nodeid}
+  if (${event.response.result:1} == 0):
+    manageWAFModule:
+      nodeid: ${event.params.nodeid}
 
 onBeforeDetachExtIp:
   - env.control.GetNodeInfo[${event.params.nodeid}]
@@ -147,126 +106,11 @@ onBeforeDetachExtIp:
       disableWAF:
         nodeid: ${response.node.id}
 
-onBeforeDelete: uninstallBitninja
-
-onUninstall: uninstallBitninja
-
 onInstall: setupBitninja
 
 actions:
   setupBitninja:
-    - manageLicenses
-    - forEach(license:response.licenses):
-        installAgent:
-          licenseKey: ${@license.licenseKey}
-          id: ${@license.id}
-    - enableInitScript
-    - disableBitNinjaAutoLoad
-    - addFavoriteDir: ${targetNodes.nodeGroup}
     - checkExtIPs
-    - makeLogsVisible
-    - addRedeployConfDir
-    - disableIPForwarding
-  
-  reinstallBitNinja: 
-    - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
-      user: root
-    - manageLicenses
-    - forEach(license:response.licenses):
-        - uninstallAgent: ${@license.id}
-        - removeLogs: ${@license.id}
-        - installAgent:
-            licenseKey: ${@license.licenseKey}
-            id: ${@license.id}
-
-  uninstallBitninja:
-    - manageLicenses: uninstall
-    - forEach(license:response.licenses):
-        uninstallAgent: ${@license.id}
-    - removeFavoriteDir
-    - removeRedeployConfDir
-
-  updateLicenses:
-    - manageLicenses: ${this:}
-    - forEach(license:response.licenses):
-        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}' && /etc/init.d/bitninja restart
-        user: root
-
-  deleteLicenses:
-    manageLicenses: ${this:uninstall}
-
-  manageLicenses:
-    - script: |
-        var params = {
-          nodeGroup: "${targetNodes.nodeGroup}",
-          envName: "${env.name}",
-          action: "${this:}"
-        };
-        var resp = jelastic.dev.scripting.Eval("a498b13745283f7f3dbab7a31ed7d348", session, "license", params);
-        return resp.response ? resp.response:resp;
-
-  uninstallAgent:
-    cmd [${this}]: |-
-      service bitninja stop; yum -y remove 'bitninja*'; 
-      rm -Rf /opt/bitninja*; rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
-      sed -i "s|;/etc/bitninja||g" ${globals.EXTEND_PERM}
-      jem filemanager extendperm
-    user: root
-  
-  restartBitNinja:
-    cmd [${targetNodes.nodeGroup}]: service bitninja restart
-    user: root
-
-  removeLogs:
-    cmd [${this}]: rm -Rf /var/log/bitninja*;
-    user: root
-
-  installAgent:
-    cmd [${this.id}]: |-
-      issue_file="/etc/issue";
-      release_files="/etc/*-release";
-      issue_string=$(cat $release_files $issue_file 2>/dev/null);
-      grep -iq "centos\|rhel" <<< $issue_string && _OS="centos"
-      [ -z "$_OS" ] && grep -iq "redhat" <<< $issue_string && _OS="centos"
-      [ -z "$_OS" ] && grep -iq "Oracle Linux Server" <<< $issue_string && _OS="centos"
-      [ -z "$_OS" ] && grep -iq "ubuntu\|mint" <<< $issue_string && _OS="ubuntu"
-      [ -z "$_OS" ] && grep -iq "debian" <<< $issue_string && _OS="debian"
-      OS_version=$(grep -h VERSION_ID <<< "$issue_string" 2>/dev/null | sed -nre 's/.*=\"?([0-9.]*).*/\1/;p;n' | head -n 1)
-      [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -h "CentOS release" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z ]*\s([0-9.]*).*/\1/;p;n')
-      [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -hP "Ubuntu|Debian" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z\/ ]*\s([0-9.]*).*/\1/;p;n')
-      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "hostOsDistrib": "'$_OS$OS_version'", "labelVersion": "${targetNodes.version}" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
-    user: root
-
-  enableInitScript:
-    cmd [${targetNodes.nodeGroup}]: |-
-      curl  -fsSL "${baseUrl}/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
-      chmod +x /etc/rc.d/init.d/jelastic-bitninja
-      chkconfig --add jelastic-bitninja
-    user: root
-
-  disableBitNinjaAutoLoad:
-    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja || echo "BitNinija service is absent"
-    user: root
-
-  addFavoriteDir:
-    - cmd [${this}]: |-
-        sed -i "s|;retain_rights = 0|retain_rights = 1|g" /etc/bitninja/System/config.ini
-        str=$(cat /etc/jelastic/extendperm.conf | awk '/./{line=$0} END{print line}')
-        grep -q "/etc/bitninja" ${globals.EXTEND_PERM} || sed -i "s|${str}|${str};/etc/bitninja|g" ${globals.EXTEND_PERM}
-        jem  filemanager extendperm
-        chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
-        service bitninja restart
-      user: root
-    - env.file.AddFavorite:
-        nodeGroup: ${targetNodes.nodeGroup}
-        path: /etc/bitninja
-        keyword: BitNinja
-        isDir: true
-
-  removeFavoriteDir:
-    env.file.RemoveFavorite:
-      nodeGroup: ${targetNodes.nodeGroup}
-      path: /etc/bitninja
 
   checkExtIPs:
     - if ('${this.nodeid:}'):
@@ -291,45 +135,21 @@ actions:
                   nodeid: ${@node.id:}
 
   manageWAFModule:
-    - if (${this.result:1} == 0):
-      - env.control.GetNodeInfo[${this.nodeid}]:
-      - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
-          if ('${response.node.extips:false}' == 'false' && '${response.node.extipsv6:false}' == 'false'):
-            disableWAF:
-              nodeid: "${response.node.id}"
-          else:
-            checkExtIPs:
-              nodeid: "${response.node.id}"
+    - env.control.GetNodeInfo[${this.nodeid}]:
+    - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
+        if ('${response.node.extips:false}' == 'false' && '${response.node.extipsv6:false}' == 'false'):
+          disableWAF:
+            nodeid: "${response.node.id}"
+        else:
+          checkExtIPs:
+            nodeid: "${response.node.id}"
 
   configureWAF:
     cmd [${this.nodeid}]: |-
-      grep -qR '^interface'  ${globals.WAFConfig} && exit 0
-      sed -i 's|^interface.*||g' ${globals.WAFConfig}
-      device=$(ip -o addr show scope global | grep $([[ "${this.type:ipv4}" == "ipv4" ]] && echo "inet" || echo "inet6") | awk '{print $2}' | head -1)
-      sed -i "s|.*redirection_mode = 'transparent'|redirection_mode = 'transparent'\ninterface[]='${device}'|g" ${globals.WAFConfig}
-      service bitninja restart
+      echo "is configureWAF action"
     user: root
 
   disableWAF:
     cmd [${this.nodeid}]: |-
-      sed -i "s|^redirection_mode.*|;redirection_mode = 'transparent'|g" ${globals.WAFConfig}
-      sed -i "s|^interface.*||g" ${globals.WAFConfig}
-      service bitninja restart
-    user: root
-      
-  makeLogsVisible:
-    cmd [${targetNodes.nodeGroup}]: curl -fsSL "${baseUrl}/scripts/enableLogsVisibility.sh" -o /tmp/enableLogsVisibility.sh; bash /tmp/enableLogsVisibility.sh "${targetNodes.nodeType}"
-    user: root
-
-  addRedeployConfDir:
-    cmd [${targetNodes.nodeGroup}]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
-    user: root
-    
-  removeRedeployConfDir:
-    if (${env.status} == 1):
-      cmd [${targetNodes.nodeGroup}]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
-      user: root
-    
-  disableIPForwarding:
-    cmd [${targetNodes.nodeGroup}]: echo 0 > /proc/sys/net/ipv4/ip_forward
+      echo "is disableWAF action"
     user: root
