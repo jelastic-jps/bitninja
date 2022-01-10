@@ -4,13 +4,12 @@ nodeType=$1;
 pathLog="";
 
 case "$nodeType" in
-"apache" ) pathLog="/var/log/httpd";;
+apache* ) pathLog="/var/log/httpd";;
 "maven" ) pathLog="/var/log/maven/";;
 "memcached" ) pathLog="/var/log/memcached";;
-"nginx" ) pathLog="/var/log/nginx";;
-"nginxphp" ) pathLog="/var/log/nginx";;
+nginx* ) pathLog="/var/log/nginx";;
 "varnish" ) pathLog="/var/log/varnish";;
-"tomcat" ) pathLog="/opt/tomcat/logs";;
+tomcat* ) pathLog="/opt/tomcat/logs";;
 esac
 
 [[ -z ${pathLog} ]] && pathLog="/var/log"
