@@ -143,7 +143,7 @@ onAfterAttachExtIp:
 onBeforeDetachExtIp:
   - env.control.GetNodeInfo[${event.params.nodeid}]
   - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
-      disableWAF:
+      manageWAFModule:
         nodeid: ${response.node.id}
 
 onBeforeDelete: uninstallBitninja
