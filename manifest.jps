@@ -120,6 +120,10 @@ onAfterServiceScaleOut:
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
     - addFavoriteDir: ${event.params.nodeGroup}
+    - forEach(node:event.response.nodes):
+        manageWAFModule:
+          nodeid: ${@node.id}
+          result: 0
 
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -127,9 +131,15 @@ onAfterScaleIn:
     - if (!${targetNodes.nodeGroup.length:0}):
         manageLicenses: scale
 
-onAfterSetExtIpCount: manageWAFModule
+onAfterSetExtIpCount:
+  manageWAFModule:
+    result: ${event.response.result}
+    nodeid: ${event.params.nodeid}
 
-onAfterAttachExtIp: manageWAFModule
+onAfterAttachExtIp:
+  manageWAFModule:
+    result: ${event.response.result}
+    nodeid: ${event.params.nodeid}
 
 onBeforeDetachExtIp:
   - env.control.GetNodeInfo[${event.params.nodeid}]
@@ -281,8 +291,8 @@ actions:
                   nodeid: ${@node.id:}
 
   manageWAFModule:
-    - if (${event.response.result:1} == 0):
-      - env.control.GetNodeInfo[${event.params.nodeid}]:
+    - if (${this.result:1} == 0):
+      - env.control.GetNodeInfo[${this.nodeid}]:
       - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
           if ('${response.node.extips:false}' == 'false' && '${response.node.extipsv6:false}' == 'false'):
             disableWAF:
