@@ -120,6 +120,7 @@ onAfterServiceScaleOut:
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
     - addFavoriteDir: ${event.params.nodeGroup}
+    - disableIPForwarding
     - forEach(node:event.response.nodes):
         manageWAFModule:
           nodeid: ${@node.id}
