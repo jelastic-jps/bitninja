@@ -185,6 +185,7 @@ actions:
         uninstallAgent: ${@license.id}
     - removeFavoriteDir
     - removeRedeployConfDir
+    - enableIPForwarding
 
   updateLicenses:
     - manageLicenses: ${this:}
@@ -328,7 +329,15 @@ actions:
     if (${env.status} == 1):
       cmd [${targetNodes.nodeGroup}]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
       user: root
-    
+
   disableIPForwarding:
-    cmd [${targetNodes.nodeGroup}]: echo 0 > /proc/sys/net/ipv4/ip_forward
+    - if (${globals.ip_forward:} == ""):
+        - cmd [${targetNodes.nodeGroup}]: echo $(cat /proc/sys/net/ipv4/ip_forward)
+        - setGlobals:
+            ip_forward: ${response.out}
+    - cmd [${targetNodes.nodeGroup}]: echo 0 > /proc/sys/net/ipv4/ip_forward
+      user: root
+      
+  enableIPForwarding:
+    cmd [${targetNodes.nodeGroup}]: echo ${globals.ip_forward:1} > /proc/sys/net/ipv4/ip_forward
     user: root
