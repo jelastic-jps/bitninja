@@ -263,8 +263,7 @@ actions:
         chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
         service bitninja restart
       user: root
-    - env.file.AddFavorite:
-        nodeGroup: ${targetNodes.nodeGroup}
+    - env.file.AddFavorite[group]:
         path: /etc/bitninja
         keyword: BitNinja
         isDir: true
