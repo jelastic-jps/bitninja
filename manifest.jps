@@ -103,11 +103,11 @@ onAfterClone:
   - script: return {result:0, jps:MANIFEST};
   - install: ${response.jps}
     envName: ${event.response.env.envName}
-    nodeGroup: group
+    nodeGroup: ${targetNodes.nodeGroup}
     settings: ${settings}
     
 onAfterRedeployContainer:
-  - if ('${event.params.nodeGroup}' == 'group'):
+  - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
       cmd [${targetNodes.nodeGroup}]: |-
         rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm
         yum -y install bitninja
@@ -120,7 +120,7 @@ onBeforeServiceScaleOut:
   user: root
 
 onAfterServiceScaleOut:
-  - if ('${event.params.nodeGroup}' == 'group'):
+  - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
     - addFavoriteDir: ${event.params.nodeGroup}
@@ -130,7 +130,7 @@ onAfterServiceScaleOut:
           nodeid: ${@node.id}
 
 onAfterScaleIn:
-  if ('${event.params.nodeGroup}' == 'group'):
+  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}):
         manageLicenses: scale
@@ -147,7 +147,7 @@ onAfterAttachExtIp:
 
 onBeforeDetachExtIp:
   - env.control.GetNodeInfo[${event.params.nodeid}]
-  - if ('${response.node.nodeGroup}' == 'group'):
+  - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
       manageWAFModule:
         nodeid: ${response.node.id}
 
@@ -166,7 +166,7 @@ actions:
           id: ${@license.id}
     - enableInitScript
     - disableBitNinjaAutoLoad
-    - addFavoriteDir: group
+    - addFavoriteDir: ${targetNodes.nodeGroup}
     - checkExtIPs
     - makeLogsVisible
     - addRedeployConfDir
@@ -204,7 +204,7 @@ actions:
   manageLicenses:
     - script: |
         var params = {
-          nodeGroup: "group",
+          nodeGroup: "${targetNodes.nodeGroup}",
           envName: "${env.name}",
           action: "${this:}"
         };
@@ -240,7 +240,7 @@ actions:
       OS_version=$(grep -h VERSION_ID <<< "$issue_string" 2>/dev/null | sed -nre 's/.*=\"?([0-9.]*).*/\1/;p;n' | head -n 1)
       [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -h "CentOS release" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z ]*\s([0-9.]*).*/\1/;p;n')
       [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -hP "Ubuntu|Debian" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z\/ ]*\s([0-9.]*).*/\1/;p;n')
-      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "hostOsDistrib": "'$_OS$OS_version'", "labelVersion": "${targetNodes.version}" }' --environmentSpecification='{"nodeGroup": "group", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
+      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "hostOsDistrib": "'$_OS$OS_version'", "labelVersion": "${targetNodes.version}" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
     user: root
 
   enableInitScript:
@@ -264,14 +264,14 @@ actions:
         service bitninja restart
       user: root
     - env.file.AddFavorite:
-        nodeGroup: group
+        nodeGroup: ${targetNodes.nodeGroup}
         path: /etc/bitninja
         keyword: BitNinja
         isDir: true
 
   removeFavoriteDir:
     env.file.RemoveFavorite:
-      nodeGroup: group
+      nodeGroup: ${targetNodes.nodeGroup}
       path: /etc/bitninja
 
   checkExtIPs:
@@ -286,7 +286,7 @@ actions:
             nodeid: ${this.nodeid:}
     - else:
         forEach(node:env.nodes):
-          if ('${@node.nodeGroup}' == 'group'):
+          if ('${@node.nodeGroup}' == '${targetNodes.nodeGroup}'):
             - if (${@node.extips.length:false}):
                 configureWAF:
                   type: ipv4
@@ -298,7 +298,7 @@ actions:
 
   manageWAFModule:
     - env.control.GetNodeInfo[${this.nodeid}]:
-    - if ('${response.node.nodeGroup}' == 'group'):
+    - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
         if ('${response.node.extips:false}' == 'false' && '${response.node.extipsv6:false}' == 'false'):
           disableWAF:
             nodeid: "${response.node.id}"
