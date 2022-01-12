@@ -87,7 +87,7 @@ globals:
   action: /etc/bitninja/jelastic_action
   WAFConfig: /etc/bitninja/WAFManager/config.ini
   EXTEND_PERM: /etc/jelastic/extendperm.conf
-  backupConfig: /var/lib/jelastic/keys/bitninja-backup
+  backupConfig: /var/lib/jelastic/keys/bitninja.sysctl.conf.backup
 
 onAfterStart: 
     updateLicenses: renew
