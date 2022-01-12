@@ -14,6 +14,9 @@ onBeforeInit: |
   });
   return resp.response ? resp.response:resp;
 
+nodeGroupAlias:
+  ${targetNodes.nodeGroup}: group
+
 description:
   short: BitNinja All-in-One Server Protection
 
@@ -84,6 +87,7 @@ globals:
   action: /etc/bitninja/jelastic_action
   WAFConfig: /etc/bitninja/WAFManager/config.ini
   EXTEND_PERM: /etc/jelastic/extendperm.conf
+  backupConfig: /var/lib/jelastic/keys/bitninja-backup
 
 onAfterStart: 
     updateLicenses: renew
@@ -92,18 +96,18 @@ onBeforeStop:
     deleteLicenses: terminate
 
 onBeforeClone:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action} || echo 'directory is missing'
+  cmd [group]: test /etc/bitninja  && echo 'clone' > ${globals.action} || echo 'directory is missing'
   user: root
 
 onAfterClone:
   - script: return {result:0, jps:MANIFEST};
   - install: ${response.jps}
     envName: ${event.response.env.envName}
-    nodeGroup: ${targetNodes.nodeGroup}
+    nodeGroup: group
     settings: ${settings}
     
 onAfterRedeployContainer:
-  - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+  - if ('${event.params.nodeGroup}' == 'group'):
       cmd [${targetNodes.nodeGroup}]: |-
         rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm
         yum -y install bitninja
@@ -112,11 +116,11 @@ onAfterRedeployContainer:
   - disableIPForwarding
 
 onBeforeServiceScaleOut:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
+  cmd [group]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
   user: root
 
 onAfterServiceScaleOut:
-  - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+  - if ('${event.params.nodeGroup}' == 'group'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
     - addFavoriteDir: ${event.params.nodeGroup}
@@ -126,7 +130,7 @@ onAfterServiceScaleOut:
           nodeid: ${@node.id}
 
 onAfterScaleIn:
-  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+  if ('${event.params.nodeGroup}' == 'group'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}):
         manageLicenses: scale
@@ -143,7 +147,7 @@ onAfterAttachExtIp:
 
 onBeforeDetachExtIp:
   - env.control.GetNodeInfo[${event.params.nodeid}]
-  - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
+  - if ('${response.node.nodeGroup}' == 'group'):
       manageWAFModule:
         nodeid: ${response.node.id}
 
@@ -162,10 +166,11 @@ actions:
           id: ${@license.id}
     - enableInitScript
     - disableBitNinjaAutoLoad
-    - addFavoriteDir: ${targetNodes.nodeGroup}
+    - addFavoriteDir: group
     - checkExtIPs
     - makeLogsVisible
     - addRedeployConfDir
+    - backupIPForwarding
     - disableIPForwarding
   
   reinstallBitNinja: 
@@ -185,7 +190,7 @@ actions:
         uninstallAgent: ${@license.id}
     - removeFavoriteDir
     - removeRedeployConfDir
-    - setIPForwarding
+    - restoreIPForwarding
 
   updateLicenses:
     - manageLicenses: ${this:}
@@ -199,7 +204,7 @@ actions:
   manageLicenses:
     - script: |
         var params = {
-          nodeGroup: "${targetNodes.nodeGroup}",
+          nodeGroup: "group",
           envName: "${env.name}",
           action: "${this:}"
         };
@@ -215,7 +220,7 @@ actions:
     user: root
   
   restartBitNinja:
-    cmd [${targetNodes.nodeGroup}]: service bitninja restart
+    cmd [group]: service bitninja restart
     user: root
 
   removeLogs:
@@ -235,18 +240,18 @@ actions:
       OS_version=$(grep -h VERSION_ID <<< "$issue_string" 2>/dev/null | sed -nre 's/.*=\"?([0-9.]*).*/\1/;p;n' | head -n 1)
       [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -h "CentOS release" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z ]*\s([0-9.]*).*/\1/;p;n')
       [[ -z "$OS_version" ]] && OS_version=$(grep -m 1 -hP "Ubuntu|Debian" <<< "$issue_string" 2>/dev/null | sed -nre 's/[a-zA-Z\/ ]*\s([0-9.]*).*/\1/;p;n')
-      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "hostOsDistrib": "'$_OS$OS_version'", "labelVersion": "${targetNodes.version}" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
+      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "hostOsDistrib": "'$_OS$OS_version'", "labelVersion": "${targetNodes.version}" }' --environmentSpecification='{"nodeGroup": "group", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
     user: root
 
   enableInitScript:
-    cmd [${targetNodes.nodeGroup}]: |-
+    cmd [group]: |-
       curl  -fsSL "${baseUrl}/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
       chmod +x /etc/rc.d/init.d/jelastic-bitninja
       chkconfig --add jelastic-bitninja
     user: root
 
   disableBitNinjaAutoLoad:
-    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja || echo "BitNinija service is absent"
+    cmd [group]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja || echo "BitNinija service is absent"
     user: root
 
   addFavoriteDir:
@@ -259,14 +264,14 @@ actions:
         service bitninja restart
       user: root
     - env.file.AddFavorite:
-        nodeGroup: ${targetNodes.nodeGroup}
+        nodeGroup: group
         path: /etc/bitninja
         keyword: BitNinja
         isDir: true
 
   removeFavoriteDir:
     env.file.RemoveFavorite:
-      nodeGroup: ${targetNodes.nodeGroup}
+      nodeGroup: group
       path: /etc/bitninja
 
   checkExtIPs:
@@ -281,7 +286,7 @@ actions:
             nodeid: ${this.nodeid:}
     - else:
         forEach(node:env.nodes):
-          if ('${@node.nodeGroup}' == '${targetNodes.nodeGroup}'):
+          if ('${@node.nodeGroup}' == 'group'):
             - if (${@node.extips.length:false}):
                 configureWAF:
                   type: ipv4
@@ -293,7 +298,7 @@ actions:
 
   manageWAFModule:
     - env.control.GetNodeInfo[${this.nodeid}]:
-    - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
+    - if ('${response.node.nodeGroup}' == 'group'):
         if ('${response.node.extips:false}' == 'false' && '${response.node.extipsv6:false}' == 'false'):
           disableWAF:
             nodeid: "${response.node.id}"
@@ -318,29 +323,26 @@ actions:
     user: root
       
   makeLogsVisible:
-    cmd [${targetNodes.nodeGroup}]: curl -fsSL "${baseUrl}/scripts/enableLogsVisibility.sh" -o /tmp/enableLogsVisibility.sh; bash /tmp/enableLogsVisibility.sh "${targetNodes.nodeType}"
+    cmd [group]: curl -fsSL "${baseUrl}/scripts/enableLogsVisibility.sh" -o /tmp/enableLogsVisibility.sh; bash /tmp/enableLogsVisibility.sh "${targetNodes.nodeType}"
     user: root
 
   addRedeployConfDir:
-    cmd [${targetNodes.nodeGroup}]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
+    cmd [group]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
     user: root
     
   removeRedeployConfDir:
     if (${env.status} == 1):
-      cmd [${targetNodes.nodeGroup}]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
+      cmd [group]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
       user: root
   
   disableIPForwarding:
-    - setRequiredGlobals
-    - cmd [${targetNodes.nodeGroup}]: echo 0 > /proc/sys/net/ipv4/ip_forward
-      user: root
+    cmd [group]: sysctl -w net.ipv4.ip_forward=0
+    user: root
       
-  setIPForwarding:
-    cmd [${targetNodes.nodeGroup}]: echo ${globals.ip_forward:1} > /proc/sys/net/ipv4/ip_forward
+  restoreIPForwarding:
+    cmd [group]: sysctl -w net.ipv4.ip_forward=$(grep "ip_forward" ${globals.backupConfig} | awk '{print $3}')
     user: root
 
-  setRequiredGlobals:
-    if (${globals.ip_forward:} == ""):
-      cmd [${targetNodes.nodeGroup}]: echo $(cat /proc/sys/net/ipv4/ip_forward)
-      - setGlobals:
-          ip_forward: ${response.out}
+  backupIPForwarding:
+    cmd [group]: echo "net.ipv4.ip_forward = "$(cat /proc/sys/net/ipv4/ip_forward) > ${globals.backupConfig}
+    user: root
