@@ -319,7 +319,7 @@ actions:
     - script: |
         var resp, items, item, path;
 
-        resp = jelastic.env.control.GetLogsList('${env.name}', session, '${targetNodes.master.id}');
+        resp = api.env.control.GetLogsList('${env.name}', session, '${targetNodes.master.id}');
         if (resp.result != 0) return resp;
         items = resp.array;
 
