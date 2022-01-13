@@ -110,6 +110,7 @@ onAfterRedeployContainer:
         service bitninja restart
       user: root
   - disableIPForwarding
+  - makeLogsVisible
 
 onBeforeServiceScaleOut:
   cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
