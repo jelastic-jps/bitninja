@@ -335,7 +335,13 @@ actions:
             }
           }
         }
-    - cmd [${targetNodes.nodeGroup}]: curl -fsSL "${baseUrl}/scripts/enableLogsVisibility.sh" -o /tmp/enableLogsVisibility.sh; bash /tmp/enableLogsVisibility.sh "${response.path}"
+    - cmd [${targetNodes.nodeGroup}]: |-
+        pathLog="${response.path:}";
+        [[ -z ${pathLog} ]] && pathLog="/var/log"
+        
+        [[ -d "/var/log/bitninja" && ! -d "${pathLog}/bitninja" ]] && ln -s /var/log/bitninja ${pathLog}
+        [[ -d "/var/log/bitninja-ssl-termination" && ! -d "${pathLog}/bitninja-ssl-termination" ]] && ln -s /var/log/bitninja-ssl-termination ${pathLog}
+        exit 0;
       user: root
 
   addRedeployConfDir:
