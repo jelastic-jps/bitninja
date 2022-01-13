@@ -323,8 +323,8 @@ actions:
         if (resp.result != 0) return resp;
         items = resp.array;
 
-        for (var i = 0, n = items.length; i < n; i++) {
-          if (items[i].type == "GROUP") {
+        for (var i = 0, n = items.length; i < n; i++)
+          if (items[i].type == "GROUP")
             if (items[i].items && items[i].items[0]) {
               item = items[i].items[0];
 
@@ -333,8 +333,6 @@ actions:
                 path: item.path.replace(item.name, "")
               }
             }
-          }
-        }
     - cmd [${targetNodes.nodeGroup}]: |-
         pathLog="${response.path:}";
         [[ -z ${pathLog} ]] && pathLog="/var/log"
