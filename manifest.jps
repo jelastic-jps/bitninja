@@ -318,8 +318,31 @@ actions:
     user: root
       
   makeLogsVisible:
-    cmd [${targetNodes.nodeGroup}]: curl -fsSL "${baseUrl}/scripts/enableLogsVisibility.sh" -o /tmp/enableLogsVisibility.sh; bash /tmp/enableLogsVisibility.sh "${targetNodes.nodeType}"
-    user: root
+    - script: |
+        var resp, items, item, path;
+
+        resp = api.env.control.GetLogsList('${env.name}', session, '${targetNodes.master.id}');
+        if (resp.result != 0) return resp;
+        items = resp.array;
+
+        for (var i = 0, n = items.length; i < n; i++)
+          if (items[i].type == "GROUP")
+            if (items[i].items && items[i].items[0]) {
+              item = items[i].items[0];
+
+              return {
+                result: 0,
+                path: item.path.replace(item.name, "")
+              }
+            }
+    - cmd [${targetNodes.nodeGroup}]: |-
+        pathLog="${response.path:}";
+        [[ -z ${pathLog} ]] && pathLog="/var/log"
+        
+        [[ -d "/var/log/bitninja" && ! -d "${pathLog}/bitninja" ]] && ln -s /var/log/bitninja ${pathLog}
+        [[ -d "/var/log/bitninja-ssl-termination" && ! -d "${pathLog}/bitninja-ssl-termination" ]] && ln -s /var/log/bitninja-ssl-termination ${pathLog}
+        exit 0;
+      user: root
 
   addRedeployConfDir:
     cmd [${targetNodes.nodeGroup}]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
