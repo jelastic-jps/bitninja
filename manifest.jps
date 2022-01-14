@@ -14,6 +14,9 @@ onBeforeInit: |
   });
   return resp.response ? resp.response:resp;
 
+nodeGroupAlias:
+  ${targetNodes.nodeGroup}: group
+
 description:
   short: BitNinja All-in-One Server Protection
 
@@ -84,6 +87,7 @@ globals:
   action: /etc/bitninja/jelastic_action
   WAFConfig: /etc/bitninja/WAFManager/config.ini
   EXTEND_PERM: /etc/jelastic/extendperm.conf
+  backupConfig: /var/lib/jelastic/keys/bitninja.sysctl.conf.backup
 
 onAfterStart: 
     updateLicenses: renew
@@ -92,7 +96,7 @@ onBeforeStop:
     deleteLicenses: terminate
 
 onBeforeClone:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action} || echo 'directory is missing'
+  cmd [group]: test /etc/bitninja  && echo 'clone' > ${globals.action} || echo 'directory is missing'
   user: root
 
 onAfterClone:
@@ -113,7 +117,7 @@ onAfterRedeployContainer:
   - makeLogsVisible
 
 onBeforeServiceScaleOut:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
+  cmd [group]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
   user: root
 
 onAfterServiceScaleOut:
@@ -167,6 +171,7 @@ actions:
     - checkExtIPs
     - makeLogsVisible
     - addRedeployConfDir
+    - backupIPForwarding
     - disableIPForwarding
   
   reinstallBitNinja: 
@@ -186,6 +191,7 @@ actions:
         uninstallAgent: ${@license.id}
     - removeFavoriteDir
     - removeRedeployConfDir
+    - restoreIPForwarding
 
   updateLicenses:
     - manageLicenses: ${this:}
@@ -215,7 +221,7 @@ actions:
     user: root
   
   restartBitNinja:
-    cmd [${targetNodes.nodeGroup}]: service bitninja restart
+    cmd [group]: service bitninja restart
     user: root
 
   removeLogs:
@@ -239,14 +245,14 @@ actions:
     user: root
 
   enableInitScript:
-    cmd [${targetNodes.nodeGroup}]: |-
+    cmd [group]: |-
       curl  -fsSL "${baseUrl}/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
       chmod +x /etc/rc.d/init.d/jelastic-bitninja
       chkconfig --add jelastic-bitninja
     user: root
 
   disableBitNinjaAutoLoad:
-    cmd [${targetNodes.nodeGroup}]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja || echo "BitNinija service is absent"
+    cmd [group]: $(ps uax | grep -v grep | grep -q bitninja) && chkconfig --del bitninja || echo "BitNinija service is absent"
     user: root
 
   addFavoriteDir:
@@ -258,8 +264,7 @@ actions:
         chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
         service bitninja restart
       user: root
-    - env.file.AddFavorite:
-        nodeGroup: ${targetNodes.nodeGroup}
+    - env.file.AddFavorite[group]:
         path: /etc/bitninja
         keyword: BitNinja
         isDir: true
@@ -345,14 +350,22 @@ actions:
       user: root
 
   addRedeployConfDir:
-    cmd [${targetNodes.nodeGroup}]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
+    cmd [group]: CONF="/etc/jelastic/redeploy.conf"; grep -q 'bitninja' ${CONF} || echo "/etc/bitninja" >> ${CONF}
     user: root
     
   removeRedeployConfDir:
     if (${env.status} == 1):
-      cmd [${targetNodes.nodeGroup}]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
+      cmd [group]: sed -i 's|.*bitninja.*||g' /etc/jelastic/redeploy.conf
       user: root
-    
+  
   disableIPForwarding:
-    cmd [${targetNodes.nodeGroup}]: echo 0 > /proc/sys/net/ipv4/ip_forward
+    cmd [group]: sysctl -w net.ipv4.ip_forward=0
+    user: root
+      
+  restoreIPForwarding:
+    cmd [group]: sysctl -w net.ipv4.ip_forward=$(grep "ip_forward" ${globals.backupConfig} | awk '{print $3}')
+    user: root
+
+  backupIPForwarding:
+    cmd [group]: echo "net.ipv4.ip_forward = "$(cat /proc/sys/net/ipv4/ip_forward) > ${globals.backupConfig}
     user: root
