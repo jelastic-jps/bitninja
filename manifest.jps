@@ -114,9 +114,8 @@ onAfterRedeployContainer:
 
 onBeforeServiceScaleOut:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    forEach(node:event.response.nodes):
-      cmd[${@node.id}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
-      user: root
+    cmd[${event.response.nodes.join(id,)}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
+    user: root
 
 onAfterServiceScaleOut:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
