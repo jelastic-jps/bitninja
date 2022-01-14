@@ -113,8 +113,9 @@ onAfterRedeployContainer:
   - makeLogsVisible
 
 onBeforeServiceScaleOut:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
-  user: root
+  forEach(node:event.response.nodes):
+    cmd[${@node.id}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
+    user: root
 
 onAfterServiceScaleOut:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -179,6 +180,8 @@ actions:
         - installAgent:
             licenseKey: ${@license.licenseKey}
             id: ${@license.id}
+        - enableInitScript
+        - disableBitNinjaAutoLoad
 
   uninstallBitninja:
     - manageLicenses: uninstall
