@@ -92,7 +92,7 @@ onBeforeStop:
     deleteLicenses: terminate
 
 onBeforeClone:
-  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action} || echo 'directory is missing'
+  cmd [${targetNodes.nodeGroup}]: test /etc/bitninja  && echo 'clone' > ${globals.action} || exit 0
   user: root
 
 onAfterClone:
@@ -114,7 +114,7 @@ onAfterRedeployContainer:
 
 onBeforeServiceScaleOut:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-    cmd[${event.response.nodes.join(id,)}]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
+    cmd[${event.response.nodes.join(id,)}]: test /etc/bitninja && echo 'scale' > ${globals.action} || exit 0
     user: root
 
 onAfterServiceScaleOut:
