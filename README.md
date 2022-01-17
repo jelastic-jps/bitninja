@@ -40,7 +40,7 @@ Follow the link and set up the password for your account. That's it, your server
 
 ## Addon's Options
 
-Using add-on UI you can either get to the admin console or uninstall the add-on.
+Using add-on UI you can either get to the **Admin Panel**, **Restart Agent** or **Uninstall** the add-on.
 
 <p align="left">
 <img src="images/add-on.png" width="650">
