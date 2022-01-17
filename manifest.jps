@@ -96,8 +96,7 @@ onBeforeStop:
     deleteLicenses: terminate
 
 onBeforeClone:
-  cmd [group]: test /etc/bitninja  && echo 'clone' > ${globals.action} || echo 'directory is missing'
-  user: root
+  cmd [group]: test /etc/bitninja  && echo 'clone' > ${globals.action} || exit 0
 
 onAfterClone:
   - script: return {result:0, jps:MANIFEST};
@@ -117,8 +116,9 @@ onAfterRedeployContainer:
   - makeLogsVisible
 
 onBeforeServiceScaleOut:
-  cmd [group]: test /etc/bitninja && echo 'scale' > ${globals.action} || echo 'directory is missing'
-  user: root
+  if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
+    cmd[${event.response.nodes.join(id,)}]: test /etc/bitninja && echo 'scale' > ${globals.action} || exit 0
+    user: root
 
 onAfterServiceScaleOut:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -184,6 +184,8 @@ actions:
         - installAgent:
             licenseKey: ${@license.licenseKey}
             id: ${@license.id}
+        - enableInitScript
+        - disableBitNinjaAutoLoad
 
   uninstallBitninja:
     - manageLicenses: uninstall

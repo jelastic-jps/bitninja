@@ -24,7 +24,7 @@ function cleanBitNinjaAgent() {
   rm -Rf /var/log/bitninja*;
 }
 
-[[ $ACTION == "clone" || $ACTION == "scale" ]] && { cleanBitNinjaAgent; exit 0; }
+[[ $ACTION == "clone" || $ACTION == "scale" ]] && { cleanBitNinjaAgent; exit 0; } #relates to onBeforeClone and onBeforeServiceScaleOut events only
 
 echo "" > $JELASTIC_ACTION
 
