@@ -88,6 +88,7 @@ globals:
   WAFConfig: /etc/bitninja/WAFManager/config.ini
   EXTEND_PERM: /etc/jelastic/extendperm.conf
   backupConfig: /var/lib/jelastic/keys/bitninja.sysctl.conf.backup
+  bitninja_label: BitNinja Service
 
 onAfterStart: 
     updateLicenses: renew
@@ -173,6 +174,7 @@ actions:
     - addRedeployConfDir
     - backupIPForwarding
     - disableIPForwarding
+    - allowFirewallPorts
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -194,6 +196,7 @@ actions:
     - removeFavoriteDir
     - removeRedeployConfDir
     - restoreIPForwarding
+    - denyFirewallPorts
 
   updateLicenses:
     - manageLicenses: ${this:}
@@ -371,3 +374,47 @@ actions:
   backupIPForwarding:
     cmd [group]: echo "net.ipv4.ip_forward = "$(cat /proc/sys/net/ipv4/ip_forward) > ${globals.backupConfig}
     user: root
+    
+  allowFirewallPorts:
+    script: |
+      var ports = [60412, 60413, 60201, 60210, "60211-60250", 60300, 60301, 60414], rules = [], resp;
+     
+      for (var i = 0, n = ports.length; i < n; i++) {
+        rules.push({
+          direction: "INPUT",
+          nodeGroup: "cp",
+          name: "${globals.bitninja_label}",
+          protocol: "TCP",
+          ports: ports[i],
+          src: "ALL",
+          priority: 1000,
+          action: "ALLOW",
+          isEnabled: true
+        });
+      }
+  
+      return api.environment.security.AddRules("${env.name}", session, toJSON(rules), "${targetNodes.nodeGroup}");
+
+  denyFirewallPorts:
+    script: |
+      var resp, rules, rm_rules = [];
+      
+      resp = api.env.security.GetRules("${env.name}", session, "${targetNodes.nodeGroup}");
+      if (resp.result != 0) return resp;
+      
+      rules = resp.rules;
+      
+      for (var i = 0, n = rules.length; i < n; i++) {
+        if (rules[i].name == "${globals.bitninja_label}") {
+          rm_rules.push(rules[i].id);
+        }
+      }
+      
+      if (rm_rules.length) {
+        resp = api.env.security.RemoveRules("${env.name}", session, rm_rules);
+        if (resp.result != 0) return resp;
+      }
+      
+      return {
+        result: 0
+      }
