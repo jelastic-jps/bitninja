@@ -82,6 +82,8 @@ targetNodes:
     - postgres12
     - postgres13
     - postgres14
+    - memcached
+    - memcached-dockerized
 
 globals:
   action: /etc/bitninja/jelastic_action
