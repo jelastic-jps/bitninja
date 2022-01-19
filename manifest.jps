@@ -84,6 +84,13 @@ targetNodes:
     - postgres14
     - memcached
     - memcached-dockerized
+    - mongodb
+    - mongodb-dockerized
+    - couchbase
+    - opensearch
+    - opensearch1
+    - redis
+    - redis6
 
 globals:
   action: /etc/bitninja/jelastic_action
