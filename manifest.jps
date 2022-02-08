@@ -96,7 +96,8 @@ globals:
   action: /etc/bitninja/jelastic_action
   WAFConfig: /etc/bitninja/WAFManager/config.ini
   EXTEND_PERM: /etc/jelastic/extendperm.conf
-  backupConfig: /var/lib/jelastic/keys/bitninja.sysctl.conf.backup
+  KEYS: /var/lib/jelastic/keys/
+  backupConfig: bitninja.sysctl.conf.backup
   bitninja_label: BitNinja Service
 
 onAfterStart: 
@@ -377,11 +378,11 @@ actions:
     user: root
       
   restoreIPForwarding:
-    cmd [group]: sysctl -w net.ipv4.ip_forward=$(grep "ip_forward" ${globals.backupConfig} | awk '{print $3}')
+    cmd [group]: sysctl -w net.ipv4.ip_forward=$(grep "ip_forward" ${globals.KEYS}/${globals.backupConfig} | awk '{print $3}')
     user: root
 
   backupIPForwarding:
-    cmd [group]: echo "net.ipv4.ip_forward = "$(cat /proc/sys/net/ipv4/ip_forward) > ${globals.backupConfig}
+    cmd [group]: mkdir -p ${globals.KEYS}; echo "net.ipv4.ip_forward = "$(cat /proc/sys/net/ipv4/ip_forward) > ${globals.KEYS}/${globals.backupConfig}
     user: root
     
   allowFirewallPorts:
