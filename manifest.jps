@@ -171,6 +171,9 @@ onInstall: setupBitninja
 
 actions:
   setupBitninja:
+    - if (${targetNodes.first.flexibleCloudlets} < 4):
+        script: |
+          return { result: "warning", message: "Target node cloudlets count are not satisfied [BitNinja system requirements](https://doc.bitninja.io/docs/Installation/system_requirements)" }
     - manageLicenses
     - forEach(license:response.licenses):
         installAgent:
