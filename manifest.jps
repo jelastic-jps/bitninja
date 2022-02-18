@@ -91,6 +91,11 @@ targetNodes:
     - opensearch1
     - redis
     - redis6
+    - perconadb
+    - springboot
+    - javaengine
+    - golang
+    - dotnet
 
 globals:
   action: /etc/bitninja/jelastic_action
