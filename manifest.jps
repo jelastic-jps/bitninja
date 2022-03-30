@@ -192,7 +192,8 @@ actions:
     - addRedeployConfDir
     - backupIPForwarding
     - disableIPForwarding
-    - allowFirewallPorts
+    - if (${quota.firewall.enabled}):
+        allowFirewallPorts
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -214,7 +215,8 @@ actions:
     - removeFavoriteDir
     - removeRedeployConfDir
     - restoreIPForwarding
-    - denyFirewallPorts
+    - if (${quota.firewall.enabled}):
+        denyFirewallPorts
 
   updateLicenses:
     - manageLicenses: ${this:}
