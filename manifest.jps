@@ -186,6 +186,7 @@ actions:
           licenseKey: ${@license.licenseKey}
           id: ${@license.id}
     - enableInitScript
+    - denyPortHoneypot
     - disableBitNinjaAutoLoad
     - addFavoriteDir: ${targetNodes.nodeGroup}
     - checkExtIPs
@@ -431,4 +432,5 @@ actions:
     cmd[cp]: |-
       sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12346|g' ${globals.HoneypotConfig}
       sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12345|g' ${globals.HoneypotConfig}
+      service bitninja restart
     user: root
