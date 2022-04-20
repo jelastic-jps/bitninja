@@ -99,6 +99,7 @@ targetNodes:
 
 globals:
   action: /etc/bitninja/jelastic_action
+  HoneypotConfig: /etc/bitninja/PortHoneypot/config.ini
   WAFConfig: /etc/bitninja/WAFManager/config.ini
   EXTEND_PERM: /etc/jelastic/extendperm.conf
   KEYS: /var/lib/jelastic/keys/
@@ -185,6 +186,7 @@ actions:
           licenseKey: ${@license.licenseKey}
           id: ${@license.id}
     - enableInitScript
+    - denyPortHoneypot
     - disableBitNinjaAutoLoad
     - addFavoriteDir: ${targetNodes.nodeGroup}
     - checkExtIPs
@@ -425,3 +427,10 @@ actions:
       return {
         result: 0
       }
+      
+  denyPortHoneypot:
+    cmd[cp]: |-
+      sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12346|g' ${globals.HoneypotConfig}
+      sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12345|g' ${globals.HoneypotConfig}
+      service bitninja restart
+    user: root
