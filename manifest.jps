@@ -290,33 +290,29 @@ actions:
 
   checkExtIPs:
     - if ('${this.nodeid:}'):
-      - if (${targetNodes.extips.length:false}):
-          configureWAF:
-            type: ipv4
-            nodeid: ${this.nodeid:}
-      - elif (${targetNodes.extipsv6.length:false}):
+      - if (${targetNodes.extipsv6.length:false}):
           configureWAF:
             type: ipv6
+            nodeid: ${this.nodeid:}
+      - else:
+          configureWAF:
+            type: ipv4
             nodeid: ${this.nodeid:}
     - else:
         forEach(node:env.nodes):
           if ('${@node.nodeGroup}' == '${targetNodes.nodeGroup}'):
-            - if (${@node.extips.length:false}):
-                configureWAF:
-                  type: ipv4
-                  nodeid: ${@node.id:}
-            - elif (${@node.extipsv6.length:false}):
+            - if (${@node.extipsv6.length:false}):
                 configureWAF:
                   type: ipv6
+                  nodeid: ${@node.id:}
+            - else:
+                configureWAF:
+                  type: ipv4
                   nodeid: ${@node.id:}
 
   manageWAFModule:
     - env.control.GetNodeInfo[${this.nodeid}]:
     - if ('${response.node.nodeGroup}' == '${targetNodes.nodeGroup}'):
-        if ('${response.node.extips:false}' == 'false' && '${response.node.extipsv6:false}' == 'false'):
-          disableWAF:
-            nodeid: "${response.node.id}"
-        else:
           checkExtIPs:
             nodeid: "${response.node.id}"
 
