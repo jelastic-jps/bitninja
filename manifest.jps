@@ -113,6 +113,7 @@ onBeforeStop:
 
 onBeforeClone:
   cmd [group]: test /etc/bitninja  && echo 'clone' > ${globals.action} || exit 0
+  user: root
 
 onAfterClone:
   - script: return {result:0, jps:MANIFEST};
