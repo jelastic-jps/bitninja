@@ -20,7 +20,11 @@ JELASTIC_ACTION="/etc/bitninja/jelastic_action"
 ACTION=$(cat $JELASTIC_ACTION)
 
 function cleanBitNinjaAgent() {
-  service bitninja stop; yum -y remove 'bitninja*'; rm -Rf /opt/bitninja*; rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
+  service bitninja stop;
+  yum clean all && rpm --rebuilddb;
+  package-cleanup --problems;
+  yum -y --setopt=tsflags=noscripts remove bitninja*;
+  rm -Rf /opt/bitninja*; rm -Rf /var/lib/bitninja*; rm -Rf /etc/bitninja*;
   rm -Rf /var/log/bitninja*;
 }
 
