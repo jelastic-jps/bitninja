@@ -122,6 +122,7 @@ onAfterClone:
     envName: ${event.response.env.envName}
     nodeGroup: ${targetNodes.nodeGroup}
     settings: ${settings}
+  - cleanAction
     
 onAfterRedeployContainer:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -147,6 +148,7 @@ onAfterServiceScaleOut:
     - forEach(node:event.response.nodes):
         manageWAFModule:
           nodeid: ${@node.id}
+    - cleanAction
 
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -432,4 +434,8 @@ actions:
       sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12346|g' ${globals.HoneypotConfig}
       sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12345|g' ${globals.HoneypotConfig}
       service bitninja restart
+    user: root
+  
+  cleanAction:
+    cmd [group]: test /etc/bitninja  && echo '' > ${globals.action} || exit 0
     user: root
