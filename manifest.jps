@@ -126,7 +126,7 @@ onAfterClone:
 onAfterRedeployContainer:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
       cmd [${targetNodes.nodeGroup}]: |-
-        grep -q 'AlmaLinux' /etc/system-release && { yum install -y initscripts libxcrypt-compat; rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm; sed -i 's|baseurl=.*|baseurl=http://rpm.bitninja.io/8/$basearch|g' /etc/yum.repos.d/BitNinja.repo; yum install bitninja; } || { rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm; }
+        grep -q 'AlmaLinux' /etc/system-release && { yum install -y initscripts libxcrypt-compat; rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm; sed -i 's|baseurl=.*|baseurl=http://rpm.bitninja.io/8/$basearch|g' /etc/yum.repos.d/BitNinja.repo; yum -y install bitninja; } || { rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm; }
         yum -y install bitninja
         service bitninja restart
       user: root
