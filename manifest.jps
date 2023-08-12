@@ -132,6 +132,7 @@ onAfterRedeployContainer:
       user: root
   - disableIPForwarding
   - makeLogsVisible
+  - addSudoCommand
 
 onBeforeServiceScaleOut:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -197,6 +198,7 @@ actions:
     - disableIPForwarding
     - if (${quota.firewall.enabled}):
         allowFirewallPorts
+    - addSudoCommand
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -210,6 +212,7 @@ actions:
             id: ${@license.id}
         - enableInitScript
         - disableBitNinjaAutoLoad
+        - addSudoCommand
 
   uninstallBitninja:
     - manageLicenses: uninstall
@@ -220,6 +223,7 @@ actions:
     - restoreIPForwarding
     - if (${quota.firewall.enabled}):
         denyFirewallPorts
+    - removeSudoCommand
 
   updateLicenses:
     - manageLicenses: ${this:}
@@ -255,6 +259,10 @@ actions:
   removeLogs:
     cmd [${this}]: rm -Rf /var/log/bitninja*;
     user: root
+    
+  removeSudoCommand:
+    cmd [group]: rm -f /etc/sudoers.d/bninja
+    user: root
 
   installAgent:
     cmd [${this.id}]: |-
@@ -267,6 +275,10 @@ actions:
       curl  -fsSL "${baseUrl}/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
       chmod +x /etc/rc.d/init.d/jelastic-bitninja
       chkconfig --add jelastic-bitninja
+    user: root
+  
+  addSudoCommand: 
+    cmd [group]: echo -e "Cmnd_Alias BITNINJA = /usr/sbin/bitninjacli *, /usr/sbin/bitninja-config * \n\n%ssh-access ALL = NOPASSWD:BITNINJA" > /etc/sudoers.d/bninja
     user: root
 
   disableBitNinjaAutoLoad:
