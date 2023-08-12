@@ -132,6 +132,7 @@ onAfterRedeployContainer:
       user: root
   - disableIPForwarding
   - makeLogsVisible
+  - addSudoCommand
 
 onBeforeServiceScaleOut:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -211,7 +212,7 @@ actions:
             id: ${@license.id}
         - enableInitScript
         - disableBitNinjaAutoLoad
-    - addSudoCommand
+        - addSudoCommand
 
   uninstallBitninja:
     - manageLicenses: uninstall
@@ -260,7 +261,7 @@ actions:
     user: root
     
   removeSudoCommand:
-    cmd [group]: rm -f /etc/sudoers.d/bitninja
+    cmd [group]: rm -f /etc/sudoers.d/bninja
     user: root
 
   installAgent:
@@ -277,7 +278,7 @@ actions:
     user: root
   
   addSudoCommand: 
-    cmd [group]: echo -e "Cmnd_Alias BITNINJA = /usr/sbin/bitninjacli *, /usr/sbin/bitninja-config * \n\n%ssh-access ALL = NOPASSWD:BITNINJA" | tee /etc/sudoers.d/bitninja
+    cmd [group]: echo -e "Cmnd_Alias BITNINJA = /usr/sbin/bitninjacli *, /usr/sbin/bitninja-config * \n\n%ssh-access ALL = NOPASSWD:BITNINJA" > /etc/sudoers.d/bninja
     user: root
 
   disableBitNinjaAutoLoad:
