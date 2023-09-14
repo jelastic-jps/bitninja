@@ -20,14 +20,19 @@ nodeGroupAlias:
 description:
   short: BitNinja All-in-One Server Protection
 
-buttons:
+menu:
   - caption: BitNinja Admin Panel
     href: https://admin.bitninja.io/site/login
+
+buttons:
   - confirmText: Restart BitNinja agent?
     loadingText: Restarting BitNinja agent...
     action: restartBitNinja
     caption: Restart Agent
     successText: BitNinja agent has been restarted.
+  - caption: Agent Update
+    action: updateAgent
+    successText: BitNinja agent has been successfully updated
 
 targetNodes:
   nodeType:
@@ -261,6 +266,10 @@ actions:
       grep -q 'AlmaLinux' /etc/system-release && { yum install -y initscripts libxcrypt-compat; rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm; sed -i 's|baseurl=.*|baseurl=http://rpm.bitninja.io/8/$basearch|g' /etc/yum.repos.d/BitNinja.repo; yum install bitninja; }
       curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "provider": "jelastic" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
     user: root
+
+  updateAgent:
+    cmd [group]: |-
+      grep -q 'AlmaLinux' /etc/system-release && { tym -y install bitninja }
 
   enableInitScript:
     cmd [group]: |-
