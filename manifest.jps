@@ -270,6 +270,7 @@ actions:
   updateAgent:
     cmd [group]: |-
       grep -q 'AlmaLinux' /etc/system-release && { tym -y install bitninja }
+      service bitninja restart
 
   enableInitScript:
     cmd [group]: |-
