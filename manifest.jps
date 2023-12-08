@@ -127,9 +127,15 @@ onAfterClone:
 onAfterRedeployContainer:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
       cmd [${targetNodes.nodeGroup}]: |-
-        grep -q 'AlmaLinux' /etc/system-release && { yum install -y initscripts libxcrypt-compat; rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm; sed -i 's|baseurl=.*|baseurl=http://rpm.bitninja.io/8/$basearch|g' /etc/yum.repos.d/BitNinja.repo; yum -y install bitninja; } || { rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm; }
-        yum -y install bitninja
-        service bitninja restart
+        yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo
+        if grep -q 'AlmaLinux' /etc/system-release; then 
+            yum install -y initscripts libxcrypt-compat && \
+            rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm && \
+            sed -i 's|baseurl=.*|baseurl=http://rpm.bitninja.io/8/$basearch|g' /etc/yum.repos.d/BitNinja.repo;
+        else 
+            rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm;
+        fi
+        yum -y install bitninja && service bitninja restart
       user: root
   - disableIPForwarding
   - makeLogsVisible
@@ -260,14 +266,14 @@ actions:
 
   installAgent:
     cmd [${this.id}]: |-
-      grep -q 'AlmaLinux' /etc/system-release && { yum install -y initscripts libxcrypt-compat; rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm; sed -i 's|baseurl=.*|baseurl=http://rpm.bitninja.io/8/$basearch|g' /etc/yum.repos.d/BitNinja.repo; yum install bitninja; }
+      yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo
       curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "provider": "jelastic" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
     user: root
 
   enableInitScript:
     cmd [group]: |-
-      curl  -fsSL "${baseUrl}/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja
-      chmod +x /etc/rc.d/init.d/jelastic-bitninja
+      curl  -fsSL "${baseUrl}/scripts/init.sh" -o /etc/rc.d/init.d/jelastic-bitninja && \
+      chmod +x /etc/rc.d/init.d/jelastic-bitninja && \
       chkconfig --add jelastic-bitninja
     user: root
 
