@@ -199,6 +199,7 @@ actions:
     - disableIPForwarding
     - if (${quota.firewall.enabled}):
         allowFirewallPorts
+    - syncConfigs
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
@@ -439,4 +440,8 @@ actions:
   
   cleanAction:
     cmd [group]: test /etc/bitninja  && echo '' > ${globals.action} || exit 0
+    user: root
+
+  syncConfigs:
+    cmd [group]: bitninjacli --syncconfigs
     user: root
