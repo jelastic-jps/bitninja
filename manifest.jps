@@ -204,7 +204,7 @@ actions:
         allowFirewallPorts
   
   reinstallBitNinja: 
-    - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
+    - cmd[${targetNodes.master.id}]: service bitninja restart
       user: root
     - manageLicenses
     - forEach(license:response.licenses):
@@ -229,7 +229,7 @@ actions:
   updateLicenses:
     - manageLicenses: ${this:}
     - forEach(license:response.licenses):
-        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}' && /etc/init.d/bitninja restart
+        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}' && service bitninja restart
         user: root
 
   deleteLicenses:
@@ -268,9 +268,8 @@ actions:
     user: root
 
   updateAgent:
-    cmd [group]: |-
-      grep -q 'AlmaLinux' /etc/system-release && { tym -y install bitninja }
-      service bitninja restart
+    cmd [group]: grep -q 'AlmaLinux' /etc/system-release && yum -y install bitninja; service bitninja restart
+    user: root
 
   enableInitScript:
     cmd [group]: |-
