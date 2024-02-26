@@ -84,6 +84,7 @@ targetNodes:
     - postgres14
     - memcached
     - memcached-dockerized
+    - mongo
     - mongodb
     - mongodb-dockerized
     - couchbase
