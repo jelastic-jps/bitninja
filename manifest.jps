@@ -268,7 +268,7 @@ actions:
     user: root
 
   updateAgent:
-    cmd [group]: grep -q 'AlmaLinux' /etc/system-release && yum -y install bitninja; service bitninja restart
+    cmd [group]: yum -y install bitninja; service bitninja restart
     user: root
 
   enableInitScript:
