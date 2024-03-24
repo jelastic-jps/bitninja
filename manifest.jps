@@ -106,6 +106,7 @@ globals:
   KEYS: /var/lib/jelastic/keys/
   backupConfig: bitninja.sysctl.conf.backup
   bitninja_label: BitNinja Service
+  minCloudlets: 4
 
 onAfterStart: 
     updateLicenses: renew
@@ -183,13 +184,26 @@ onBeforeDelete: uninstallBitninja
 
 onUninstall: uninstallBitninja
 
-onInstall: setupBitninja
+onInstall: 
+  - setMinCloudlets
+  - setupBitninja
 
 actions:
+  setMinCloudlets:
+    - cmd[${targetNodes.master.id}]:
+        if grep -a 'AlmaLinux' /etc/system-release &>/dev/null; then
+            echo "7";
+        else
+            echo "4";
+        fi
+      user: root
+    - setGlobals:
+        minCloudlets: ${response.out}
+
   setupBitninja:
-    - if (${targetNodes.first.flexibleCloudlets} < 4):
+    - if (${targetNodes.first.flexibleCloudlets} < ${globals.minCloudlets}):
         script: |
-          return { result: "warning", message: "Target node cloudlets count are not satisfied [BitNinja system requirements](https://doc.bitninja.io/docs/Installation/system_requirements)" }
+          return { result: "warning", message: "Target node cloudlets count are not satisfied [BitNinja system requirements](https://doc.bitninja.io/docs/Installation/system_requirements). At least ${globals.minCloudlets} cloudlets are required." }
     - manageLicenses
     - forEach(license:response.licenses):
         installAgent:
