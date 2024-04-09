@@ -20,14 +20,19 @@ nodeGroupAlias:
 description:
   short: BitNinja All-in-One Server Protection
 
-buttons:
+menu:
   - caption: BitNinja Admin Panel
     href: https://admin.bitninja.io/site/login
+
+buttons:
   - confirmText: Restart BitNinja agent?
     loadingText: Restarting BitNinja agent...
     action: restartBitNinja
     caption: Restart Agent
     successText: BitNinja agent has been restarted.
+  - caption: Agent Update
+    action: updateAgent
+    successText: BitNinja agent has been successfully updated
 
 targetNodes:
   nodeType:
@@ -209,7 +214,7 @@ actions:
     - syncConfigs
   
   reinstallBitNinja: 
-    - cmd[${targetNodes.master.id}]: /etc/init.d/bitninja restart
+    - cmd[${targetNodes.master.id}]: service bitninja restart
       user: root
     - manageLicenses
     - forEach(license:response.licenses):
@@ -234,7 +239,7 @@ actions:
   updateLicenses:
     - manageLicenses: ${this:}
     - forEach(license:response.licenses):
-        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}' && /etc/init.d/bitninja restart
+        cmd [${@license.id}]: bitninja-config --provision-key='${@license.licenseKey}' && service bitninja restart
         user: root
 
   deleteLicenses:
@@ -270,6 +275,10 @@ actions:
     cmd [${this.id}]: |-
       yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo
       curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "provider": "jelastic" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
+    user: root
+
+  updateAgent:
+    cmd [group]: yum -y install bitninja; service bitninja restart
     user: root
 
   enableInitScript:
