@@ -463,9 +463,11 @@ actions:
       
   denyPortHoneypot:
     cmd[group]: |-
-      sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12346|g' ${globals.HoneypotConfig}
-      sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12345|g' ${globals.HoneypotConfig}
-      service bitninja restart
+      [[ -f "${globals.HoneypotConfig}" ]] && {
+        sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12346|g' ${globals.HoneypotConfig}
+        sed -i 's|\[ports_never_use\]|\[ports_never_use\]\nports[]=12345|g' ${globals.HoneypotConfig}
+        service bitninja restart
+      } || exit 0;
     user: root
   
   cleanAction:
