@@ -358,7 +358,7 @@ actions:
       grep -qR '^interface'  ${globals.WAFConfig} && exit 0
       sed -i 's|^interface.*||g' ${globals.WAFConfig}
       device=$(ip -o addr show scope global | grep $([[ "${this.type:ipv4}" == "ipv4" ]] && echo "inet" || echo "inet6") | awk '{print $2}' | head -1)
-      sed -i "s|^.*redirection_mode[[:space:]]*=[[:space:]]*'transparent'.*$|redirection_mode = 'transparent'\ninterface[]='${device}'|g" ${globals.WAFConfig}
+      sed -i "s|^.*redirection_mode[[:space:]]*=[[:space:]]*'transparent'.*$|redirection_mode='transparent'\ninterface[]='${device}'|g" ${globals.WAFConfig}
       service bitninja restart
     user: root
 
