@@ -365,7 +365,7 @@ actions:
 
   disableWAF:
     cmd [${this.nodeid}]: |-
-      sed -i "s|^redirection_mode.*|;redirection_mode = 'transparent'|g" ${globals.WAFConfig}
+      sed -i "s|^redirection_mode.*|;redirection_mode='transparent'|g" ${globals.WAFConfig}
       sed -i "s|^interface.*||g" ${globals.WAFConfig}
       service bitninja restart
     user: root
