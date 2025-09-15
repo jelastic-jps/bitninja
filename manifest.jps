@@ -133,7 +133,7 @@ onAfterClone:
     
 onAfterRedeployContainer:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-      cmd [${targetNodes.nodeGroup}]: |-
+    - cmd [${targetNodes.nodeGroup}]: |-
         yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo
         if grep -q 'AlmaLinux' /etc/system-release; then 
             yum install -y initscripts libxcrypt-compat && \
@@ -144,6 +144,7 @@ onAfterRedeployContainer:
         fi
         yum -y install bitninja && service bitninja restart
       user: root
+    - addFavoriteDir: ${event.params.nodeGroup}
   - disableIPForwarding
   - makeLogsVisible
 
