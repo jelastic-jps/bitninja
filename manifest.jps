@@ -5,7 +5,7 @@ name: BitNinja Service
 logo: images/logo.png
 homepage: https://bitninja.io/
 
-baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja/main
+baseUrl: https://raw.githubusercontent.com/sych74/bitninja/main
 
 onBeforeInit: |
   var resp = jelastic.dev.scripting.Eval("a498b13745283f7f3dbab7a31ed7d348", session, "wizard.ui", {
