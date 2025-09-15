@@ -308,7 +308,7 @@ actions:
 
   addFavoriteDir:
     - cmd [${this}]: |-
-        sed -i "s|;retain_rights = 0|retain_rights = 1|g" /etc/bitninja/System/config.ini
+        sed -i -E "s|^[;[:space:]]*retain_rights[[:space:]]*=[[:space:]]*[0-9]+.*$|retain_rights=1|g" /etc/bitninja/System/config.ini
         str=$(cat /etc/jelastic/extendperm.conf | awk '/./{line=$0} END{print line}')
         grep -q "/etc/bitninja" ${globals.EXTEND_PERM} || sed -i "s|${str}|${str};/etc/bitninja|g" ${globals.EXTEND_PERM}
         jem  filemanager extendperm
