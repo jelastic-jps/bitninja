@@ -215,6 +215,7 @@ actions:
         installAgent:
           licenseKey: ${@license.licenseKey}
           id: ${@license.id}
+    - syncConfigs
     - enableInitScript
     - denyPortHoneypot
     - disableBitNinjaAutoLoad
@@ -226,7 +227,6 @@ actions:
     - disableIPForwarding
     - if (${quota.firewall.enabled}):
         allowFirewallPorts
-    - syncConfigs
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: service bitninja restart
