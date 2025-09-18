@@ -313,7 +313,8 @@ actions:
         str=$(cat /etc/jelastic/extendperm.conf | awk '/./{line=$0} END{print line}')
         grep -q "/etc/bitninja" ${globals.EXTEND_PERM} || sed -i "s|${str}|${str};/etc/bitninja|g" ${globals.EXTEND_PERM}
         jem  filemanager extendperm
-        chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
+        find /etc/bitninja -type d -exec chmod 755 {} \;
+        find /etc/bitninja -type f -exec chmod 644 {} \;
         service bitninja restart
       user: root
     - env.file.AddFavorite[group]:
