@@ -5,7 +5,7 @@ name: BitNinja Service
 logo: images/logo.png
 homepage: https://bitninja.io/
 
-baseUrl: https://raw.githubusercontent.com/jelastic-jps/bitninja/main
+baseUrl: https://raw.githubusercontent.com/sych74/bitninja/main
 
 onBeforeInit: |
   var resp = jelastic.dev.scripting.Eval("a498b13745283f7f3dbab7a31ed7d348", session, "wizard.ui", {
@@ -133,7 +133,7 @@ onAfterClone:
     
 onAfterRedeployContainer:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
-      cmd [${targetNodes.nodeGroup}]: |-
+    - cmd [${targetNodes.nodeGroup}]: |-
         yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo
         if grep -q 'AlmaLinux' /etc/system-release; then 
             yum install -y initscripts libxcrypt-compat && \
@@ -144,6 +144,7 @@ onAfterRedeployContainer:
         fi
         yum -y install bitninja && service bitninja restart
       user: root
+    - addFavoriteDir: ${event.params.nodeGroup}
   - disableIPForwarding
   - makeLogsVisible
 
@@ -156,12 +157,12 @@ onAfterServiceScaleOut:
   - if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
     - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
     - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
+    - cleanAction
     - addFavoriteDir: ${event.params.nodeGroup}
     - disableIPForwarding
     - forEach(node:event.response.nodes):
         manageWAFModule:
           nodeid: ${@node.id}
-    - cleanAction
 
 onAfterScaleIn:
   if ('${event.params.nodeGroup}' == '${targetNodes.nodeGroup}'):
@@ -209,11 +210,17 @@ actions:
     - if (${targetNodes.first.flexibleCloudlets} < ${globals.minCloudlets}):
         script: |
           return { result: "warning", message: "Target node cloudlets count are not satisfied [BitNinja system requirements](https://doc.bitninja.io/docs/Installation/system_requirements). At least ${globals.minCloudlets} cloudlets are required." }
+    - cmd [${targetNodes.master.id}]: command -v bitninjacli >/dev/null 2>&1 && systemctl list-units --type=service | grep -q bitninja && echo installed || echo not_installed
+      user: root
+    - if ('${response.out}' == 'installed'):
+        script: |
+          return { result: "warning", message: "BitNinja agent is already installed. Please uninstall the existing installation before running this addon. Skipping installation." }
     - manageLicenses
     - forEach(license:response.licenses):
         installAgent:
           licenseKey: ${@license.licenseKey}
           id: ${@license.id}
+    - syncConfigs
     - enableInitScript
     - denyPortHoneypot
     - disableBitNinjaAutoLoad
@@ -225,7 +232,6 @@ actions:
     - disableIPForwarding
     - if (${quota.firewall.enabled}):
         allowFirewallPorts
-    - syncConfigs
   
   reinstallBitNinja: 
     - cmd[${targetNodes.master.id}]: service bitninja restart
@@ -308,11 +314,12 @@ actions:
 
   addFavoriteDir:
     - cmd [${this}]: |-
-        sed -i "s|;retain_rights = 0|retain_rights = 1|g" /etc/bitninja/System/config.ini
+        sed -i -E "s|^[;[:space:]]*retain_rights[[:space:]]*=[[:space:]]*[0-9]+.*$|retain_rights=1|g" /etc/bitninja/System/config.ini
         str=$(cat /etc/jelastic/extendperm.conf | awk '/./{line=$0} END{print line}')
         grep -q "/etc/bitninja" ${globals.EXTEND_PERM} || sed -i "s|${str}|${str};/etc/bitninja|g" ${globals.EXTEND_PERM}
         jem  filemanager extendperm
-        chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
+        find /etc/bitninja -type d -exec chmod 755 {} \;
+        find /etc/bitninja -type f -exec chmod 644 {} \;
         service bitninja restart
       user: root
     - env.file.AddFavorite[group]:
@@ -358,13 +365,13 @@ actions:
       grep -qR '^interface'  ${globals.WAFConfig} && exit 0
       sed -i 's|^interface.*||g' ${globals.WAFConfig}
       device=$(ip -o addr show scope global | grep $([[ "${this.type:ipv4}" == "ipv4" ]] && echo "inet" || echo "inet6") | awk '{print $2}' | head -1)
-      sed -i "s|.*redirection_mode = 'transparent'|redirection_mode = 'transparent'\ninterface[]='${device}'|g" ${globals.WAFConfig}
+      sed -i "s|^.*redirection_mode[[:space:]]*=[[:space:]]*'transparent'.*$|redirection_mode='transparent'\ninterface[]='${device}'|g" ${globals.WAFConfig}
       service bitninja restart
     user: root
 
   disableWAF:
     cmd [${this.nodeid}]: |-
-      sed -i "s|^redirection_mode.*|;redirection_mode = 'transparent'|g" ${globals.WAFConfig}
+      sed -i "s|^redirection_mode.*|;redirection_mode='transparent'|g" ${globals.WAFConfig}
       sed -i "s|^interface.*||g" ${globals.WAFConfig}
       service bitninja restart
     user: root
