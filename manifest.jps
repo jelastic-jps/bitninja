@@ -1,6 +1,6 @@
 type: update
 id: bitninja
-version: 6.0.1
+version: 6.0.2
 name: BitNinja Service
 logo: images/logo.png
 homepage: https://bitninja.io/
@@ -154,6 +154,7 @@ onAfterServiceScaleOut[${targetNodes.nodeGroup}]:
   - if (${targetNodes.nodeGroup.length:0}): deleteLicenses
   - if (!${targetNodes.nodeGroup.length:0}): reinstallBitNinja
   - addFavoriteDir: ${event.params.nodeGroup}
+  - syncConfigs
   - disableIPForwarding
   - forEach(node:event.response.nodes):
       manageWAFModule:
@@ -304,12 +305,16 @@ actions:
 
   addFavoriteDir:
     - cmd [${this}]: |-
-        sed -i "s|;retain_rights = 0|retain_rights = 1|g" /etc/bitninja/System/config.ini
-        str=$(cat /etc/jelastic/extendperm.conf | awk '/./{line=$0} END{print line}')
+        for cfg in /etc/bitninja/*/config.ini; do
+          grep -qE '^[;[:space:]]*retain_rights' "$cfg" || continue
+          sed -i -E 's/^[;[:space:]]*retain_rights[[:space:]]*=[[:space:]]*0/retain_rights=1/' "$cfg"
+        done
+        grep -l 'retain_rights=1' /etc/bitninja/*/config.ini 2>/dev/null || true
+        str=$(awk '/./{line=$0} END{print line}' ${globals.EXTEND_PERM})
         grep -q "/etc/bitninja" ${globals.EXTEND_PERM} || sed -i "s|${str}|${str};/etc/bitninja|g" ${globals.EXTEND_PERM}
-        jem  filemanager extendperm
-        chmod -R 644 /etc/bitninja/*; chmod 755 /etc/bitninja
-        service bitninja restart
+        find /etc/bitninja -type d -exec chmod 755 {} +
+        find /etc/bitninja -type f -exec chmod 644 {} +
+        jem filemanager extendperm
       user: root
     - env.file.AddFavorite[group]:
         path: /etc/bitninja
@@ -471,5 +476,7 @@ actions:
     user: root
 
   syncConfigs:
-    cmd [group]: bitninjacli --syncconfigs
+    cmd [group]: |-
+      bitninjacli --syncconfigs
+      bitninjacli --module=System --reload || echo "WARN: System module reload failed" >&2
     user: root
