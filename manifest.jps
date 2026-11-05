@@ -133,15 +133,12 @@ onAfterClone:
     
 onAfterRedeployContainer[${targetNodes.nodeGroup}]:
   - cmd [${targetNodes.nodeGroup}]: |-
-      yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo
-      if grep -q 'AlmaLinux' /etc/system-release; then 
-          yum install -y initscripts libxcrypt-compat && \
-          rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm && \
-          sed -i 's|baseurl=.*|baseurl=http://rpm.bitninja.io/8/$basearch|g' /etc/yum.repos.d/BitNinja.repo;
-      else 
-          rpm -Uvh http://rpm.bitninja.io/1.0/noarch/bitninja-repo-1.0-1.noarch.rpm;
+      if grep -q 'AlmaLinux' /etc/system-release; then
+          yum install -y initscripts libxcrypt-compat
       fi
-      yum -y install bitninja && service bitninja restart
+      yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo /etc/yum.repos.d/bitninja.repo
+      curl https://get.bitninja.io/install.sh | /bin/bash -s - --updateChannel=stable -y
+      service bitninja restart
     user: root
   - disableIPForwarding
   - makeLogsVisible
@@ -283,12 +280,25 @@ actions:
 
   installAgent:
     cmd [${this.id}]: |-
-      yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo
-      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "provider": "jelastic" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
+      yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo /etc/yum.repos.d/bitninja.repo
+      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' --updateChannel=stable -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "provider": "jelastic" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
+      if [ -f /var/lib/bitninja-reliable-auto-update/main.json ]; then
+          sed -i -E 's/"frequent"/"stable"/; s/"beta"/"stable"/' /var/lib/bitninja-reliable-auto-update/main.json
+      fi
     user: root
 
   updateAgent:
-    cmd [group]: yum -y install bitninja; service bitninja restart
+    cmd [group]: |-
+      yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo /etc/yum.repos.d/bitninja.repo
+      printf '%s\n' '[bitninja]' 'name=BitNinja Server Security (Stable)' 'baseurl=http://rpm.bitninja.io/$releasever/$basearch' 'gpgcheck=0' 'enabled=1' > /etc/yum.repos.d/bitninja.repo
+      if [ -f /var/lib/bitninja-reliable-auto-update/main.json ]; then
+          sed -i -E 's/"frequent"/"stable"/; s/"beta"/"stable"/' /var/lib/bitninja-reliable-auto-update/main.json
+      fi
+      yum -y install bitninja
+      for pkg in bitninja bitninja-waf3 bitninja-reliable-auto-update; do
+          rpm -q "$pkg" >/dev/null 2>&1 && yum -y distro-sync "$pkg"
+      done
+      service bitninja restart
     user: root
 
   enableInitScript:
