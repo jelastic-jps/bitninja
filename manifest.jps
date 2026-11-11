@@ -112,6 +112,9 @@ globals:
   backupConfig: bitninja.sysctl.conf.backup
   bitninja_label: BitNinja Service
   minCloudlets: 4
+  installChannel: frequent
+  autoUpdateChannel: noUpdate
+  AutoUpdateConfig: /var/lib/bitninja-reliable-auto-update/main.json
 
 onAfterStart: 
     updateLicenses: renew
@@ -137,9 +140,10 @@ onAfterRedeployContainer[${targetNodes.nodeGroup}]:
           yum install -y initscripts libxcrypt-compat
       fi
       yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo /etc/yum.repos.d/bitninja.repo
-      curl https://get.bitninja.io/install.sh | /bin/bash -s - --updateChannel=stable -y
-      service bitninja restart
+      curl https://get.bitninja.io/install.sh | /bin/bash -s - --updateChannel=${globals.installChannel} -y
     user: root
+  - disableAutoUpdate
+  - restartBitNinja
   - disableIPForwarding
   - makeLogsVisible
 
@@ -279,26 +283,31 @@ actions:
     user: root
 
   installAgent:
-    cmd [${this.id}]: |-
-      yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo /etc/yum.repos.d/bitninja.repo
-      curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' --updateChannel=stable -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "provider": "jelastic" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
-      if [ -f /var/lib/bitninja-reliable-auto-update/main.json ]; then
-          sed -i -E 's/"frequent"/"stable"/; s/"beta"/"stable"/' /var/lib/bitninja-reliable-auto-update/main.json
-      fi
-    user: root
+    - cmd [${this.id}]: |-
+        yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo /etc/yum.repos.d/bitninja.repo
+        curl https://get.bitninja.io/install.sh | /bin/bash -s - --license_key='${this.licenseKey}' --updateChannel=${globals.installChannel} -y --serverConfigurationMetadata='{"label": "${targetNodes.nodeType}", "provider": "jelastic" }' --environmentSpecification='{"nodeGroup": "${targetNodes.nodeGroup}", "environmentName": "${env.name}", "environmentDomain": "${env.domain}" }'
+      user: root
+    - disableAutoUpdate: ${this.id}
 
+  # Agent is updated only on demand: packages are upgraded from the repo
+  # configured by install.sh, automatic updates stay disabled afterwards.
   updateAgent:
-    cmd [group]: |-
-      yum -y remove bitninja-repo; rm -f /etc/yum.repos.d/BitNinja.repo /etc/yum.repos.d/bitninja.repo
-      printf '%s\n' '[bitninja]' 'name=BitNinja Server Security (Stable)' 'baseurl=http://rpm.bitninja.io/$releasever/$basearch' 'gpgcheck=0' 'enabled=1' > /etc/yum.repos.d/bitninja.repo
-      if [ -f /var/lib/bitninja-reliable-auto-update/main.json ]; then
-          sed -i -E 's/"frequent"/"stable"/; s/"beta"/"stable"/' /var/lib/bitninja-reliable-auto-update/main.json
-      fi
-      yum -y install bitninja
-      for pkg in bitninja bitninja-waf3 bitninja-reliable-auto-update; do
-          rpm -q "$pkg" >/dev/null 2>&1 && yum -y distro-sync "$pkg"
-      done
-      service bitninja restart
+    - cmd [group]: |-
+        for pkg in bitninja bitninja-waf3 bitninja-reliable-auto-update; do
+            rpm -q "$pkg" >/dev/null 2>&1 && yum -y upgrade "$pkg"
+        done
+        exit 0
+      user: root
+    - disableAutoUpdate
+    - restartBitNinja
+
+  # Switch bitninja-reliable-auto-update to the "No Updates" channel
+  # so the agent is not upgraded automatically.
+  disableAutoUpdate:
+    cmd [${this:group}]: |-
+      [ -f ${globals.AutoUpdateConfig} ] || { echo "${globals.AutoUpdateConfig} not found"; exit 0; }
+      sed -i -z -E 's/("versionType"[[:space:]]*:[[:space:]]*\[)[^]]*\]/\1"${globals.autoUpdateChannel}"]/' ${globals.AutoUpdateConfig}
+      service bitninja-reliable-auto-update restart || true
     user: root
 
   enableInitScript:
