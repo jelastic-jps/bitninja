@@ -289,10 +289,12 @@ actions:
       user: root
     - disableAutoUpdate: ${this.id}
 
-  # Agent is updated only on demand: packages are upgraded from the repo
-  # configured by install.sh, automatic updates stay disabled afterwards.
+  # Agent is updated only on demand. RAU empties bitninja.repo on the
+  # "No Updates" channel, so the Frequent repo (same content as install.sh
+  # writes) is restored before the upgrade; automatic updates stay disabled.
   updateAgent:
     - cmd [group]: |-
+        printf '%s\n' '[bitninja-beta]' 'name=BitNinja Server Security (Frequent)' 'baseurl=http://rpm-beta.bitninja.io/$releasever/$basearch' 'gpgcheck=0' 'enabled=1' > /etc/yum.repos.d/bitninja.repo
         for pkg in bitninja bitninja-waf3 bitninja-reliable-auto-update; do
             rpm -q "$pkg" >/dev/null 2>&1 && yum -y upgrade "$pkg"
         done
